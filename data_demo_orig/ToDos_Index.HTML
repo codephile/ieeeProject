@@ -1,0 +1,42 @@
++ 1
+            If li_count >= 45 Then
+                wf_PrintFooter
+                li_count = wf_PrintHead(ls_H1, ls_H2, ls_H3)
+            End If
+            For i = 1 To Len(rs("Normal_Val"))
+                If Mid(rs("Normal_Val"), i, 1) = Chr(13) Then
+                    li_count = li_count + 1
+                    If li_count >= 45 Then li_count = wf_PrintHead(ls_H1, ls_H2, ls_H3)
+                End If
+            Next i
+        End If
+           '     Print #1, ""
+'        If Rs("Category") = "H" Then
+'            Print #1, Left(GS_Haematology, 60)
+'            Print #1, Mid(GS_Haematology, 61)
+'            li_Count = li_Count + 2
+'        ElseIf Rs("Category") = "B" Then
+'            Print #1, Left(GS_Biochemistry, 60)
+'            Print #1, Mid(GS_Biochemistry, 61)
+'            li_Count = li_Count + 2
+'        End If
+        
+        'Print #1,
+        li_count = li_count + 1
+        If li_count >= 45 Then
+            wf_PrintFooter
+            li_count = wf_PrintHead(ls_H1, ls_H2, ls_H3)
+        End If
+        rs.MoveNext
+        If rs.EOF = True Then
+            For i = li_count + 1 To 45
+                Print #1,
+            Next
+            Set LRs = LADB.OpenRecordset("select remarks from lb_m_group " _
+            & " where gr_code = '" & ls_GrCode & "' ", dbOpenSnapshot)
+            If Len(LRs("remarks")) > 60 Then
+                If Len(LRs("remarks")) > 120 Then
+                    Print #1, Tab(5); Left(LRs("remarks"), 66)
+                    Print #1, Tab(5); Mid(LRs("remarks"), 67, 66)
+                    Print #1, Tab(5); Mid(LRs("remarks"), 133)
+           

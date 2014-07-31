@@ -1,0 +1,42 @@
+VERSION 5.00
+Object = "{5E9E78A0-531B-11CF-91F6-C2863C385E30}#1.0#0"; "MSFLXGRD.OCX"
+Begin VB.Form Fr_Result 
+   Caption         =   "Result Printing"
+   ClientHeight    =   6675
+   ClientLeft      =   60
+   ClientTop       =   345
+   ClientWidth     =   8820
+   Icon            =   "Fr_Res.frx":0000
+   LinkTopic       =   "Form1"
+   MDIChild        =   -1  'True
+   ScaleHeight     =   6675
+   ScaleWidth      =   8820
+   WindowState     =   2  'Maximized
+   Begin VB.Frame fmeHelp 
+      Caption         =   "Help"
+      Height          =   3720
+      Left            =   1245
+      TabIndex        =   0
+      Top             =   1410
+      Width           =   5505
+      Begin VB.TextBox txtHelp2 
+         Height          =   345
+         Left            =   4110
+         TabIndex        =   2
+         TabStop         =   0   'False
+         Top             =   225
+         Width           =   990
+      End
+      Begin VB.TextBox txtHelp1 
+         Height          =   345
+         Left            =   90
+         TabIndex        =   1
+         TabStop         =   0   'False
+         Top             =   225
+         Width           =   3990
+      End
+      Begin MSFlexGridLib.MSFlexGrid flxHelp 
+         Height          =   3045
+         Left            =   75
+         TabIndex        =   3
+         TabStop         =   0   'Fal

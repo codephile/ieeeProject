@@ -1,0 +1,62 @@
+<html>
+<head>
+	<title>:: WILD RIVER ADVENTURES DOCUMENT ::</title>
+	<meta name="keywords" content="wild river adventures">
+
+	<meta name="keywords1" content="river rafting vacation plan">
+</head>
+
+<body>
+<table height=100% width=100% border=2>
+<tr bgcolor=#eeeeee height=15%>
+	<td align=center valign=center><h2>Members Index</h2>
+	</td>
+</tr>
+<H3>
+Greetings from Montana and Glacier National Park!
+<HR>
+Wild River Adventures has been offering outfitted trips in this beautiful part of the world since 1985. Our Montana Adventures include Whitewater Rafting, Fly Fishing, Scenic Floats, Inflatable Kayaking and Trail rides. Our friendly and professional office staff is looking forward to helping you with your vaction plans. Please call us at 1 800-700-7056 and we will gladly assist you in putting together a Montana Vacation package of a lifetime
+
+</H3>
+
+<tr>
+<td>
+<table border=5 height=100% width=100%>
+	<tr>
+	<td width=15% align=center valign=top><br>
+	</td>
+
+	<td align=center valign=top><br><b>MEMBER DETAILS</b><br><br>
+<form runat="server">
+<asp:Repeater id="repeater1" runat="server">
+
+<HeaderTemplate>
+	<table border=2>
+	<tr>
+		<th width=150>MemberCode</th>
+		<th width=150>Name</th>
+	</tr>
+</HeaderTemplate>
+<ItemTemplate>
+	<tr>
+		<td><%#Container.DataItem("MemberCode")%></td>
+		<td><%#Container.DataItem("MemberName")%></td>
+	</tr>
+</ItemTemplate>
+<FooterTemplate>
+	</table>
+</FooterTemplate>
+
+</asp:Repeater>
+</form>
+
+	</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

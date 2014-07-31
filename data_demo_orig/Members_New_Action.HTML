@@ -1,0 +1,28 @@
+Ascii = 39 Then KeyAscii = 0
+End Sub
+
+Private Sub Form_Load()
+
+Me.KeyPreview = True
+fmeHelp.Visible = False
+txt_Select.Locked = True
+Cmd_Search.Picture = LoadPicture(Butt_Path + "\Search.bmp")
+
+Command1.Picture = LoadPicture(Butt_Path + "\PRTCANL.BMP")
+Command7.Picture = LoadPicture(Butt_Path + "\LEPRINT.BMP")
+Command8.Picture = LoadPicture(Butt_Path + "\LEEXIT.BMP")
+Command9.Picture = LoadPicture(Butt_Path + "\LEPREVIE.BMP")
+Command10.Picture = LoadPicture(Butt_Path + "\LESETUP.BMP")
+
+flxHelp.ColWidth(0) = 2460
+flxHelp.ColWidth(1) = 1170
+
+DTPicker1.Value = DateValue(Now)
+DTPicker2.Value = DateValue(Now)
+DTPicker1.TabIndex = 0
+Me.flxHelp.TextMatrix(0, 0) = "Doctor Name"
+Me.flxHelp.TextMatrix(0, 1) = "Doctor Code"
+
+End Sub
+
+Private Sub txtHelp1_GotFocu

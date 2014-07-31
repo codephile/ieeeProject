@@ -1,0 +1,37 @@
+VERSION 5.00
+Object = "{3B7C8863-D78F-101B-B9B5-04021C009402}#1.2#0"; "RICHTX32.OCX"
+Object = "{86CF1D34-0C5F-11D2-A9FC-0000F8754DA1}#2.0#0"; "MSCOMCT2.OCX"
+Begin VB.Form Fr_Pathology 
+   Caption         =   "Pathology Report"
+   ClientHeight    =   6345
+   ClientLeft      =   60
+   ClientTop       =   345
+   ClientWidth     =   9240
+   Icon            =   "Fr_Pathology.frx":0000
+   LinkTopic       =   "Form1"
+   MDIChild        =   -1  'True
+   ScaleHeight     =   6345
+   ScaleWidth      =   9240
+   WindowState     =   2  'Maximized
+   Begin VB.CommandButton CmdClear 
+      BeginProperty Font 
+         Name            =   "Arial"
+         Size            =   0.75
+         Charset         =   0
+         Weight          =   400
+         Underline       =   0   'False
+         Italic          =   0   'False
+         Strikethrough   =   0   'False
+      EndProperty
+      Height          =   375
+      Left            =   1485
+      Style           =   1  'Graphical
+      TabIndex        =   13
+      TabStop         =   0   'False
+      Top             =   0
+      Width           =   375
+   End
+   Begin VB.CommandButton CmdList 
+      BeginProperty Font 
+         Name            =   "Arial"
+       

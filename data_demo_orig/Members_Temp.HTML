@@ -1,0 +1,70 @@
+<html>
+<head>
+	<title>:: WILD RIVER ADVENTURES DOCUMENT ::</title>
+	<meta name="keywords" content="wild river adventures">
+
+	<meta name="keywords1" content="river rafting vacation plan">
+
+	<meta name="keywords2" content="river rafting vacation plan">
+</head>
+
+<body>
+<table height=100% width=100% border=2>
+<tr bgcolor=#eeeeee height=15%>
+	<td align=center valign=center><h2>Members Temp</h2>
+	</td>
+</tr>
+<H3>
+River Fly Fishing is often said to be the cream of the sport. Nick Hart Fly Fishing offers a selection of fine venues suitable for every level of angler seeking Trout, Salmon or Sea Trout. Click the links below to be taken to our private rivers.
+<HR>
+
+The Upper - Exe  : secluded fishing for the intermedaite to advanced river fisher. Wild Trout which rise freely throughout the day.
+<HR>
+The River Bray : suitable for all, very chalk stream like in places yet with many runs and pools typical of moorland streams. Responds very well to the dry fly. Good head of Sea Trout and some Salmon.
+<HR>
+The River Torridge : Fish the home of Tarka the Otter. Diverse beat with fast runs, slow glides and stocks of Wild Trout and Sea Trout ( plus the occassional Salmon ). Excellent Spey casting pool.
+<HR>
+Also Fishing available on the Taw, Barle, Lyn , Mole plus lower beats of the Exe. 
+</H3>
+<tr>
+<td>
+<table border=5 height=100% width=100%>
+	<tr>
+	<td width=15% align=center valign=top><br>
+	</td>
+
+	<td align=center valign=top><br><b>MEMBER DETAILS</b><br><br>
+<form runat="server">
+<asp:Repeater id="repeater1" runat="server">
+
+<HeaderTemplate>
+	<table border=2>
+	<tr>
+		<th width=150>MemberCode</th>
+		<th width=150>Name</th>
+	</tr>
+</HeaderTemplate>
+<ItemTemplate>
+	<tr>
+		<td><%#Container.DataItem("MemberCode")%></td>
+		<td><%#Container.DataItem("MemberName")%></td>
+	</tr>
+</ItemTemplate>
+<FooterTemplate>
+	</table>
+</FooterTemplate>
+
+</asp:Repeater>
+</form>
+
+	<br><a href=index.html> Logout </a>
+	</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

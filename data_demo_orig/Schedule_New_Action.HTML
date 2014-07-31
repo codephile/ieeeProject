@@ -1,0 +1,23 @@
+e and " _
+''            & " lb_m_test.Sg_code = Result.Sg_code and " _
+''            & " lb_m_test.Gr_code = Result.Gr_code and " _
+''            & " Result.Req_no = '" & txtReqNo.Text & "' and " _
+''            & " Result.Gr_Code = '" & Rs("Gr_code") & "' ", dbOpenSnapshot)
+''            li_Length = LRs(0)
+''            LRs.Close
+''        End If
+''        ls_Sub = Rs("Sub")
+''        ls_GrCode = Rs("Gr_code")
+''        If Trim(Rs("Item_code")) <> "ECG" And Trim(Rs("Item_code")) <> "XRAY1" Then
+''            If Left(Trim(Rs("Item_code")), 1) = ":" Then
+''                Print #1, Rs("Item_name") + Space(li_Length - Len(Rs("Item_name"))) + "   " + Rs("uom_Result")
+''            Else
+''                Print #1, Rs("Item_name") + Space(li_Length - Len(Rs("Item_name"))) + " : " + Rs("uom_Result")
+''            End If
+''            li_Count = li_Count + 1
+''        End If
+''        If li_Count >= 44 Then
+''            wf_PrintFooter
+''            li_Count = wf_PrintHead(ls_H1, ls_H2, ls_H3)
+''        End If
+''        If Trim(Rs("Normal_Val")) <> "" Th

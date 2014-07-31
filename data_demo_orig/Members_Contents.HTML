@@ -1,0 +1,71 @@
+<html>
+<head>
+	<title>:: BOOK RACK DOCUMENT ::</title>
+	<meta name="keywords" content="books racks files">
+
+	<meta name="keywords1" content="notes books documents">
+</head>
+
+<body>
+<table height=100% width=100% border=2>
+<tr bgcolor=#eeeeee height=15%>
+	<td align=center valign=center><h2>Members Contents</h2>
+	</td>
+</tr>
+<h3>
+
+Description :
+<hr>
+Book Rack
+<hr>
+
+A modern lifestyle product. Ideal for students and office use. Saves space & improves efficiency. Compliments your desktop giving it a polished profile. Useful for storing and stacking your reference material. A combination of six pieces, that can be arranged in a variety of shapes according to need.
+<hr>
+
+File & Magazine Rack
+
+<hr>
+A beautifully contoured and functionally superb product for shelving of magazines, files, routine accounting registers on desktop. Also useful for storing of journals and office records as cells in cupboards.
+</h3>
+<tr>
+<td>
+<table border=5 height=100% width=100%>
+	<tr>
+	<td width=15% align=center valign=top><br>
+	</td>
+
+	<td align=center valign=top><br><b>MEMBER DETAILS</b><br><br>
+<form runat="server">
+<asp:Repeater id="repeater1" runat="server">
+
+<HeaderTemplate>
+	<table border=2>
+	<tr>
+		<th width=150>MemberCode</th>
+		<th width=150>Name</th>
+	</tr>
+</HeaderTemplate>
+<ItemTemplate>
+	<tr>
+		<td><%#Container.DataItem("MemberCode")%></td>
+		<td><%#Container.DataItem("MemberName")%></td>
+	</tr>
+</ItemTemplate>
+<FooterTemplate>
+	</table>
+</FooterTemplate>
+
+</asp:Repeater>
+</form>
+
+	<br><a href=index.html> Logout </a>
+	</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
