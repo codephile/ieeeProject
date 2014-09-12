@@ -14,6 +14,8 @@ class multiViewCluster extends JFrame implements ActionListener
 {
 	JFrame frmRootPath = new JFrame("Clustering with Multi-Viewpoint based Similarity Measure");
 	JFrame frmResult = new JFrame("Results Window");
+	JFrame frmClustersDocScores = new JFrame("Pairwise Document Scores");
+	JFrame frmClusters = new JFrame("Clusters");
 	
 	JButton btProcess=new JButton("Process");
 	JTextField txtFieldSimThresh = new JTextField ("");
@@ -27,11 +29,17 @@ class multiViewCluster extends JFrame implements ActionListener
 	
 	JLabel lblResult=new JLabel("Result:");
 	JLabel lblSimThresh=new JLabel("Similarity Score: ");
+	JLabel lblClustersDocScores=new JLabel("Pairwise Document Scores:");
+	JLabel lblClusters=new JLabel("Clusters:");
 		
 	JTextArea txtResult=new JTextArea("");
 	JScrollPane spResult=new JScrollPane(txtResult);
 	JTextArea txtMessage=new JTextArea("");
 	JScrollPane spMessage=new JScrollPane(txtMessage);
+	JTextArea txtClustersDocScores=new JTextArea("");
+	JScrollPane spClustersDocScores=new JScrollPane(txtClustersDocScores);	
+	JTextArea txtClusters=new JTextArea("");
+	JScrollPane spClusters=new JScrollPane(txtClusters);
 	
 	JButton btChoosefile = new JButton("Select index file");
 	
@@ -70,6 +78,7 @@ class multiViewCluster extends JFrame implements ActionListener
 		frmRootPath.setLocationRelativeTo(null);
 		frmRootPath.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmRootPath.getContentPane().setLayout(null);
+		frmRootPath.getContentPane().setBackground(new Color(101,67,33));
 		
 		//Result frame
 		frmResult.setDefaultLookAndFeelDecorated(true);
@@ -77,7 +86,24 @@ class multiViewCluster extends JFrame implements ActionListener
 		frmResult.setBounds(50,50,600,580);
 		frmResult.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		frmResult.getContentPane().setLayout(null);
-
+		frmResult.getContentPane().setBackground(new Color(101,67,33));
+		
+		//Clusters Document Scores frame
+		frmClustersDocScores.setDefaultLookAndFeelDecorated(true);
+		frmClustersDocScores.setResizable(false);
+		frmClustersDocScores.setBounds(100,100,600,580);
+		frmClustersDocScores.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frmClustersDocScores.getContentPane().setLayout(null);	
+		frmClustersDocScores.getContentPane().setBackground(new Color(101,67,33));
+		
+		//Clusters frame
+		frmClusters.setDefaultLookAndFeelDecorated(true);
+		frmClusters.setResizable(false);
+		frmClusters.setBounds(150,150,600,580);
+		frmClusters.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frmClusters.getContentPane().setLayout(null);			
+		frmClusters.getContentPane().setBackground(new Color(101,67,33));
+		
 		// File Choose Button
 		btChoosefile.setBounds(248,50,200,40);
 		btChoosefile.addActionListener(this);
@@ -99,18 +125,46 @@ class multiViewCluster extends JFrame implements ActionListener
 		frmRootPath.getContentPane().add(btCluster);
 		
 		txtFieldSimThresh.setBounds(330, 310, 190, 40);
+		txtFieldSimThresh.setBackground(new Color(128,0,0));
+		txtFieldSimThresh.setForeground(new Color(255,255,255));
 		txtFieldSimThresh.addActionListener(this);
 		frmRootPath.getContentPane().add(txtFieldSimThresh);
 		
 		lblSimThresh.setBounds(220, 325, 100, 10);  
+		lblSimThresh.setForeground(new Color(255,255,255));
 		frmRootPath.getContentPane().add(lblSimThresh);
 		
 		//Result Design
 		lblResult.setBounds(17,35,100,20);
+		lblResult.setForeground(new Color(255,255,255));
 		frmResult.getContentPane().add(lblResult);
 		spResult.setBounds(15,55,560,450);
 		frmResult.getContentPane().add(spResult);
 		txtResult.setEditable(false);
+		txtResult.setBackground(new Color(128,0,0));
+		txtMessage.setBackground(new Color(128,0,0));
+		txtResult.setForeground(new Color(255,255,255));
+		txtMessage.setForeground(new Color(255,255,255));		
+		
+		//Clusters Document Scores Design
+		lblClustersDocScores.setBounds(17,35,100,20);
+		lblClustersDocScores.setForeground(new Color(255,255,255));
+		frmClustersDocScores.getContentPane().add(lblClustersDocScores);
+		spClustersDocScores.setBounds(15,55,560,450);
+		frmClustersDocScores.getContentPane().add(spClustersDocScores);
+		txtClustersDocScores.setEditable(false);
+		txtClustersDocScores.setBackground(new Color(128,0,0));
+		txtClustersDocScores.setForeground(new Color(255,255,255));
+
+		//Clusters Design
+		lblClusters.setBounds(17,35,100,20);
+		lblClusters.setForeground(new Color(255,255,255));
+		frmClusters.getContentPane().add(lblClusters);
+		spClusters.setBounds(15,55,560,450);
+		frmClusters.getContentPane().add(spClusters);
+		txtClusters.setEditable(false);			
+		txtClusters.setBackground(new Color(128,0,0));
+		txtClusters.setForeground(new Color(255,255,255));
 		
 		spMessage.setBounds(50,110,595,120);
 		frmRootPath.getContentPane().add(spMessage);
@@ -151,6 +205,8 @@ class multiViewCluster extends JFrame implements ActionListener
 			Clusters=new ItemsetCollection();
 			clusterPath="clusters";
 			Cluster();
+			frmClustersDocScores.setVisible(true);
+			frmClusters.setVisible(true);
 			txtMessage.append("Clustering complete\n");
 		}
 			
@@ -293,14 +349,35 @@ class multiViewCluster extends JFrame implements ActionListener
 			CumulativeDocument.DIG.setV(icWords.getUniqueItemset());
 			CumulativeDocument.DIG.setE(icEdges.getUniqueItemsetCollection());
 			
-			//show each document phrases and dig
+     		//show each document phrases and dig
 			for(int t=0;t<nDocuments;t++)
 			{
 				addResultText(" Document"+t+"  : "+documents[t].getDocName()+"\n");
+				addResultText(" Phrases:\n"+documents[t].getPhrases().toString()+"\n");
+				addResultText(" Nodes:\n"+documents[t].getDIG().getV().toString()+"\n");
+				addResultText(" Edges:\n"+documents[t].getDIG().getE().toString1()+"\n");
 				logText = " Document"+t+"  : "+documents[t].getDocName()+"\n";
 				foutlog.write(logText.getBytes());
+				logText = " Phrases:\n"+documents[t].getPhrases().toString()+"\n";
+				foutlog.write(logText.getBytes());
+				logText = " Nodes:\n"+documents[t].getDIG().getV().toString()+"\n";
+				foutlog.write(logText.getBytes());
+				logText = " Edges:\n"+documents[t].getDIG().getE().toString1()+"\n";
+				foutlog.write(logText.getBytes());
 			}
-	
+			
+			addResultText("\n Cumulative DIG:\n");
+			addResultText(" Phrases:\n"+CumulativeDocument.getPhrases().toString()+"\n");
+			addResultText(" Nodes:\n"+CumulativeDocument.DIG.getV().toString()+"\n");
+			addResultText(" Edges:\n"+CumulativeDocument.DIG.getE().toString1());
+			logText = "\n Cumulative DIG:\n";
+			foutlog.write(logText.getBytes());
+			logText = " Phrases:\n"+CumulativeDocument.getPhrases().toString()+"\n";
+			foutlog.write(logText.getBytes());
+			logText = " Nodes:\n"+CumulativeDocument.DIG.getV().toString()+"\n";
+			foutlog.write(logText.getBytes());
+			logText = " Edges:\n"+CumulativeDocument.DIG.getE().toString1()+"\n";
+			foutlog.write(logText.getBytes());			
 			foutlog.close();
 		}
 		catch(IOException e)
@@ -318,9 +395,6 @@ class multiViewCluster extends JFrame implements ActionListener
 			for(int i=0;i<nDocuments;i++)
 			{
 				Histogram hist = new Histogram("Document "+i+" Similiarity",sim_perc[i]);
-				hist.pack();
-				RefineryUtilities.centerFrameOnScreen(hist);
-				hist.setVisible(true);
 			}
 		}
 		catch(Exception e)
@@ -340,7 +414,7 @@ class multiViewCluster extends JFrame implements ActionListener
 			clusterPath = clusterPath + "_run_" + nRun + "_" + timeStamp_now + ".txt";
 			FileOutputStream foutlog=new FileOutputStream(clusterPath);
 			
-			addResultText("\nClusters With the Obtained OLP :\n");
+			addClusterDocumentScoreText("\nClusters With the Obtained OLP :\n");
 			
 			//initialize clusters
 			for(int t=0;t<nDocuments;t++)
@@ -362,7 +436,7 @@ class multiViewCluster extends JFrame implements ActionListener
 					i1.addItem(""+hratio);
 					Similarities.addItemset(i1);
 					
-					addResultText("\n Document Pair("+t+","+j+") \t Similarity Score: "+hratio*100+"\n");
+					addClusterDocumentScoreText("\n Document Pair("+t+","+j+") \t Similarity Score: "+hratio*100+"\n");
 					logText = "\n Document Pair("+t+","+j+") \t Similarity Score: "+hratio*100+"\n";
 					foutlog.write(logText.getBytes());
 					
@@ -394,7 +468,7 @@ class multiViewCluster extends JFrame implements ActionListener
 					}
 				}
 			}
-			addResultText("\n\n");
+			addClusterDocumentScoreText("\n\n");
 			logText = "\n\n";
 			foutlog.write(logText.getBytes());
 			int nClusters=0;
@@ -402,13 +476,13 @@ class multiViewCluster extends JFrame implements ActionListener
 			{
 				if(Clusters.getItemset(t).get_nItems()!=0)
 				{
-					addResultText("Cluster"+(nClusters+1)+": "+Clusters.getItemset(t).toString()+"\n");
+					addClustersText("Cluster"+(nClusters+1)+": "+Clusters.getItemset(t).toString()+"\n");
 					logText = "Cluster"+(nClusters+1)+": "+Clusters.getItemset(t).toString()+"\n";
 					foutlog.write(logText.getBytes());
 					nClusters+=1;
 				}
 			}
-			addResultText("\nNumber of clusters formed: "+nClusters);
+			addClustersText("\nNumber of clusters formed: "+nClusters);
 			logText = "\nNumber of clusters formed: "+nClusters;
 			foutlog.write(logText.getBytes());
 			foutlog.close();
@@ -548,6 +622,18 @@ class multiViewCluster extends JFrame implements ActionListener
 		txtResult.append(tStr);
 		txtResult.updateUI();
 	}
+	
+	void addClusterDocumentScoreText(String tStr)
+	{
+		txtClustersDocScores.append(tStr);
+		txtClustersDocScores.updateUI();
+	}
+
+	void addClustersText(String tStr)
+	{
+		txtClusters.append(tStr);
+		txtClusters.updateUI();
+	}	
 	
 	private void addVisitedPage(String tStr)
 	{

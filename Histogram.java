@@ -7,6 +7,7 @@ import org.jfree.data.category.*;
 import org.jfree.data.category.*;
 import org.jfree.data.general.*;
 import org.jfree.ui.*;
+import javax.swing.JFrame;
 
 /**
  * A simple demonstration application showing how to create a bar chart.
@@ -26,9 +27,16 @@ public class Histogram extends ApplicationFrame {
         final CategoryDataset dataset = createDataset(sim);
         final JFreeChart chart = createChart(title,dataset);
         final ChartPanel chartPanel = new ChartPanel(chart);
+        JFrame f = new JFrame(title);
+        f.setTitle(title);
+        f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         chartPanel.setPreferredSize(new Dimension(800, 600));
-        setContentPane(chartPanel);
-
+		f.setLayout(new BorderLayout(800, 600));
+        f.add(chartPanel, BorderLayout.CENTER);	
+        f.pack();
+        f.setLocationRelativeTo(null);
+		f.getContentPane().setBackground(new Color(101,67,33));
+        f.setVisible(true);
     }
 
     /**
