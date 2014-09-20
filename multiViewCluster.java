@@ -10,7 +10,7 @@ import java.text.*;
 import javax.swing.filechooser.*;
 import org.jfree.ui.RefineryUtilities;
 
-class multiViewCluster extends JFrame implements ActionListener
+class multiViewCluster extends JFrame implements ActionListener, ComponentListener
 {
 	JFrame frmRootPath = new JFrame("Clustering with Multi-Viewpoint based Similarity Measure");
 	JFrame frmResult = new JFrame("Results Window");
@@ -23,6 +23,7 @@ class multiViewCluster extends JFrame implements ActionListener
 	ItemsetCollection Similarities=new ItemsetCollection();
 	
 	JButton btHistogram=new JButton("Histogram");
+	JButton btSimilarity=new JButton("Similarity");
 	JButton btCluster=new JButton("Clusters");
 	
 	ItemsetCollection Hist=new ItemsetCollection();
@@ -58,6 +59,7 @@ class multiViewCluster extends JFrame implements ActionListener
 	
 	String processData="processlog";
 	String clusterPath="clusters";
+	String similarityPath="similarity";
 	String logText="";
 	String txtFileRoot="";
 	String dirName;
@@ -73,34 +75,38 @@ class multiViewCluster extends JFrame implements ActionListener
 	{
 		//Root path frame
 		frmRootPath.setDefaultLookAndFeelDecorated(true);
-		frmRootPath.setResizable(false);
+		frmRootPath.setResizable(true);
 		frmRootPath.setBounds(50,50,700,400);
 		frmRootPath.setLocationRelativeTo(null);
 		frmRootPath.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frmRootPath.addComponentListener(this);
 		frmRootPath.getContentPane().setLayout(null);
 		frmRootPath.getContentPane().setBackground(new Color(101,67,33));
 		
 		//Result frame
 		frmResult.setDefaultLookAndFeelDecorated(true);
-		frmResult.setResizable(false);
+		frmResult.setResizable(true);
 		frmResult.setBounds(50,50,600,580);
 		frmResult.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frmResult.addComponentListener(this);
 		frmResult.getContentPane().setLayout(null);
 		frmResult.getContentPane().setBackground(new Color(101,67,33));
 		
 		//Clusters Document Scores frame
 		frmClustersDocScores.setDefaultLookAndFeelDecorated(true);
-		frmClustersDocScores.setResizable(false);
+		frmClustersDocScores.setResizable(true);
 		frmClustersDocScores.setBounds(100,100,600,580);
 		frmClustersDocScores.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frmClustersDocScores.addComponentListener(this);
 		frmClustersDocScores.getContentPane().setLayout(null);	
 		frmClustersDocScores.getContentPane().setBackground(new Color(101,67,33));
 		
 		//Clusters frame
 		frmClusters.setDefaultLookAndFeelDecorated(true);
-		frmClusters.setResizable(false);
+		frmClusters.setResizable(true);
 		frmClusters.setBounds(150,150,600,580);
 		frmClusters.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frmClusters.addComponentListener(this);
 		frmClusters.getContentPane().setLayout(null);			
 		frmClusters.getContentPane().setBackground(new Color(101,67,33));
 		
@@ -110,19 +116,24 @@ class multiViewCluster extends JFrame implements ActionListener
 		frmRootPath.getContentPane().add(btChoosefile);		
 		
 		//Process button Design
-		btProcess.setBounds(50,250,190,40);
+		btProcess.setBounds(50,250,90,40);
 		btProcess.addActionListener(this);
 		frmRootPath.getContentPane().add(btProcess);
 		
-		//Histogram button Design
-		btHistogram.setBounds(252,250,190,40);
-		btHistogram.addActionListener(this);
-		frmRootPath.getContentPane().add(btHistogram);
+		//Clusters button Design
+		btSimilarity.setBounds(150,250,90,40);
+		btSimilarity.addActionListener(this);
+		frmRootPath.getContentPane().add(btSimilarity);
 
-		//Cluster button Design
-		btCluster.setBounds(455,250,190,40);
+		//Similarity button Design
+		btCluster.setBounds(250,250,90,40);
 		btCluster.addActionListener(this);
 		frmRootPath.getContentPane().add(btCluster);
+		
+		//Histogram button design
+		btHistogram.setBounds(350,250,90,40);
+		btHistogram.addActionListener(this);
+		frmRootPath.getContentPane().add(btHistogram);		
 		
 		txtFieldSimThresh.setBounds(330, 310, 190, 40);
 		txtFieldSimThresh.setBackground(new Color(128,0,0));
@@ -173,6 +184,48 @@ class multiViewCluster extends JFrame implements ActionListener
 		frmRootPath.setVisible(true);
 	}
 	
+	public void componentResized(ComponentEvent e) {
+		if(e.getSource() == frmResult)
+		{
+			spResult.setBounds(15,55,e.getComponent().getWidth() - 45, e.getComponent().getHeight() - 120);
+			frmResult.validate();
+		}
+		if(e.getSource() == frmClustersDocScores)
+		{
+			spClustersDocScores.setBounds(15,55,e.getComponent().getWidth() - 45, e.getComponent().getHeight() - 120);
+			frmClustersDocScores.validate();
+		}
+		if(e.getSource() == frmClusters)
+		{
+			spClusters.setBounds(15,55,e.getComponent().getWidth() - 45, e.getComponent().getHeight() - 120);
+			frmClusters.validate();
+		}
+		if(e.getSource() == frmRootPath)
+		{
+			btChoosefile.setBounds((e.getComponent().getWidth() / 2) - 100,50,200,40);	
+			btProcess.setBounds(50,((e.getComponent().getHeight() - 160)),80,40);
+			btSimilarity.setBounds((e.getComponent().getWidth() / 2) - 120,((e.getComponent().getHeight() - 160)),80,40);
+			btCluster.setBounds((e.getComponent().getWidth() / 2) + 40,((e.getComponent().getHeight() - 160)),80,40);
+			btHistogram.setBounds((e.getComponent().getWidth() - 130),((e.getComponent().getHeight() - 160)), 80,40);
+			lblSimThresh.setBounds((e.getComponent().getWidth() / 2) - 150, ((e.getComponent().getHeight() - 85)), 100, 10);
+			txtFieldSimThresh.setBounds((e.getComponent().getWidth() / 2) - 40, ((e.getComponent().getHeight() - 100)), 190, 40);
+			spMessage.setBounds(50,110,e.getComponent().getWidth() - 100,e.getComponent().getHeight() - 110 - 180);
+			frmRootPath.validate();
+		}		
+			
+	}
+	
+	public void componentHidden(ComponentEvent e) {
+       
+    }
+
+    public void componentMoved(ComponentEvent e) {
+        
+    }
+
+    public void componentShown(ComponentEvent e) {
+        
+    }	
 
 	public void actionPerformed(ActionEvent evt)
 	{
@@ -200,12 +253,19 @@ class multiViewCluster extends JFrame implements ActionListener
 			Histogram();
 		}
 		
+		if(evt.getSource()==btSimilarity)
+		{
+			Similarity();
+			frmClustersDocScores.setVisible(true);
+			txtMessage.append("Similarity process Complete\n");
+		}
+		
 		if(evt.getSource()==btCluster)
 		{
 			Clusters=new ItemsetCollection();
 			clusterPath="clusters";
 			Cluster();
-			frmClustersDocScores.setVisible(true);
+			
 			frmClusters.setVisible(true);
 			txtMessage.append("Clustering complete\n");
 		}
@@ -403,27 +463,79 @@ class multiViewCluster extends JFrame implements ActionListener
 			txtMessage.append(e+"\n");
 		}
 	}
+	
+	//display similarity
+	public void Similarity()
+	{
+		try
+		{
+			txtClustersDocScores.setText("");
+			String timeStamp_now = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
+			similarityPath = similarityPath + "_run_" + nRun + "_" + timeStamp_now + ".txt";
+			FileOutputStream foutlog_similarity=new FileOutputStream(similarityPath);
+			
+			sim=new double[nDocuments][nDocuments][1];
+			sim_perc=new double[nDocuments][nDocuments][1];
+			
+			addClusterDocumentScoreText("\nDocument pairs With the Obtained OLP :\n");
+			
+			double highestScoreValue = 0.0, hratio = 0.0;
+			for(int t=0;t<=nDocuments-1;t++)
+			{
+				for(int j=0;j<=nDocuments-1;j++)
+				{
+					hratio=findSimilarity(documents[t],documents[j]);
+					
+					sim[t][j][0]=hratio;
+					sim_perc[t][j][0]=hratio*100;
+					
+					if(highestScoreValue <= hratio)
+						highestScoreValue = hratio;
+						
+				}
+			}
+			for(int t=0;t<=nDocuments-1;t++)
+			{
+				for(int j=0;j<=nDocuments-1;j++)
+				{
+					if(t == j)
+					{
+						sim[t][j][0] = 1.0;
+						sim_perc[t][j][0]=sim[t][j][0]*100;
+					}
+					else
+					{
+						sim[t][j][0]=sim[t][j][0]/highestScoreValue;
+						sim_perc[t][j][0]=sim[t][j][0]*100;
+					}
+					addClusterDocumentScoreText("\n Document Pair("+t+","+j+") \t Similarity Score: "+sim_perc[t][j][0]+"\n");
+					logText = "\n Document Pair("+t+","+j+") \t Similarity Score: "+sim_perc[t][j][0]+"\n";			
+					foutlog_similarity.write(logText.getBytes());					
+				}
+			}
+			foutlog_similarity.write(logText.getBytes());
+		}
+		catch(Exception e)
+		{
+			txtMessage.append("Error Occured: \n");
+			txtMessage.append(e+"\n");
+		}
+	}	
 
 	//display clusters
 	public void Cluster()
 	{
 		try
 		{
-			txtResult.setText("");
 			String timeStamp_now = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
 			clusterPath = clusterPath + "_run_" + nRun + "_" + timeStamp_now + ".txt";
 			FileOutputStream foutlog=new FileOutputStream(clusterPath);
-			
-			addClusterDocumentScoreText("\nClusters With the Obtained OLP :\n");
 			
 			//initialize clusters
 			for(int t=0;t<nDocuments;t++)
 			{
 				Clusters.addItemset(new Itemset(""+t));
-			}
-			
-			sim=new double[nDocuments][nDocuments][1];
-			sim_perc=new double[nDocuments][nDocuments][1];
+			}			
 			
 			for(int t=0;t<=nDocuments-1;t++)
 			{
@@ -435,13 +547,6 @@ class multiViewCluster extends JFrame implements ActionListener
 					i1.addItem(""+j);
 					i1.addItem(""+hratio);
 					Similarities.addItemset(i1);
-					
-					addClusterDocumentScoreText("\n Document Pair("+t+","+j+") \t Similarity Score: "+hratio*100+"\n");
-					logText = "\n Document Pair("+t+","+j+") \t Similarity Score: "+hratio*100+"\n";
-					foutlog.write(logText.getBytes());
-					
-					sim[t][j][0]=hratio;
-					sim_perc[t][j][0]=hratio*100;
 					
 					if(hratio>=similarityThreshold)
 					{
@@ -468,10 +573,8 @@ class multiViewCluster extends JFrame implements ActionListener
 					}
 				}
 			}
-			addClusterDocumentScoreText("\n\n");
-			logText = "\n\n";
-			foutlog.write(logText.getBytes());
 			int nClusters=0;
+			txtClusters.setText("");
 			for(int t=0;t<=Clusters.get_nItemsets()-1;t++)
 			{
 				if(Clusters.getItemset(t).get_nItems()!=0)
