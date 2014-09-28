@@ -371,6 +371,54 @@ class HTML_Parser
 		return(links);
 	}
 	
+	public Queue findBody()
+	{
+		script.set_filePath(FilePath);
+		script.read();
+		script.setBlockStart("<body");
+		script.setBlockEnd("body>");
+		script.findBlocks();
+		
+		Queue links=new Queue();
+		for(int t=0;t<script.get_nBlocks();t++)
+		{
+			String tStr=script.getBlock(t).get_text();
+			tStr=tStr.trim();
+			tStr=StringUtils.replaceString(tStr,"<","");
+			tStr=StringUtils.replaceString(tStr,"=","");
+			tStr=StringUtils.replaceString(tStr,"\"","");
+			tStr=StringUtils.replaceString(tStr,">","");
+			links.enqueue(tStr);
+		}
+		
+		return(links);
+	}
+
+	public Queue findStopWords()
+	{
+		script.set_filePath(FilePath);
+		script.read();
+		script.setBlockStart("<html");
+		script.setBlockEnd("html>");
+		script.findBlocks();
+		
+		Queue links=new Queue();
+		for(int t=0;t<script.get_nBlocks();t++)
+		{
+			String tStr=script.getBlock(t).get_text();
+			tStr=tStr.trim();
+			tStr=StringUtils.replaceString(tStr,"<","");
+			tStr=StringUtils.replaceString(tStr,">","");
+			tStr=StringUtils.replaceString(tStr,"}","");
+			tStr=StringUtils.replaceString(tStr,"{","");
+			tStr=StringUtils.replaceString(tStr,"html","");
+			tStr=StringUtils.replaceString(tStr,"\\/","");
+			links.enqueue(tStr);
+		}
+		
+		return(links);
+	}		
+	
 	public String toString()
 	{
 		String tStr="";
