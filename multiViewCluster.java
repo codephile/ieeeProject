@@ -91,9 +91,14 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	double alphaVal = 0.3;
 	int algoChoice = 1;
 	GVector[] finalClusters = null;
+	GVector[] finalClustersKMeansCentroid = null;
+	GMatrix prevClusterKMeans = null;
+	GMatrix currClusterKMeans = null;
+	int[][] clusterDocCounts = null;
 	int[] totalWordCount = null;
 	String stopWords;
 	Stemmer s = new Stemmer();
+	int repeat_limit = 10000;
 
 	
 	multiViewCluster()
@@ -284,6 +289,8 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			C = null;
 			numUniqueTerms = 0;
 			finalClusters = null;
+			finalClustersKMeansCentroid = null;
+			currClusterKMeans = null;
 			totalWordCount = null;
 			stopWords = null;		
 			btProcess.setText("Wait");
@@ -1025,7 +1032,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			
 			similarityMatrix(parsePath);
 			
-
+			doKMeans(4);
 			
 			foutlog.close();
 		}
@@ -1543,7 +1550,9 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			addClustersText("\nNumber of clusters formed: "+finalClusters.length);
 			logText = "\nNumber of clusters formed: "+finalClusters.length;
 			foutlogCluster.write(logText.getBytes());
+
 			foutlogCluster.close();
+			printkMeansClusters(4,clusterPath);
 		}
 		catch(Exception e)
 		{
@@ -1784,6 +1793,235 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 		return(visited);
 	}
 	
+	// Cosine similarity measure for k-means algorithm
+	public double findCosineSimilarity(int indexdocA, GVector clusterCentroid)
+	{
+		double dotProduct = clusterCentroid.dot(docNormVectors.get(indexdocA));
+		double magnitudeOfA = clusterCentroid.norm();
+		double magnitudeOfB = docNormVectors.get(indexdocA).norm();
+		double result = dotProduct / (magnitudeOfA * magnitudeOfB);
+		//when 0 is divided by 0 it shows result NaN so return 0 in such case.
+		if (Double.isNaN(result))
+			return 0;
+		else
+			return (double)result;
+	}	
+	
+	// Generating unique set of random numbers for k-means algorithm
+	public void generateUniqueRandomNumber(HashSet<Integer> uniqRand, int k)
+	{
+		Random r = new Random();
+		
+		if (k > nDocuments)
+		{
+			do
+			{
+				int pos = r.nextInt(nDocuments);
+				uniqRand.add(pos);
+
+			} while (uniqRand.size() != nDocuments);
+		}            
+		else
+		{
+			do
+			{
+				int pos = r.nextInt(nDocuments);
+				uniqRand.add(pos);
+
+			} while (uniqRand.size() != k);
+		}
+	}
+	
+	// Initialization of clusters for k-means. Number of clusters to form
+	// initially is got through an argument. The maximum that can be assigned to a
+	// single cluster are all the documents. So all the GVectors are initialized that
+	// way
+	public void initializeClusterCentroidKMeans(int k)
+	{
+		finalClustersKMeansCentroid = new GVector[k];
+		
+		for(int i = 0; i < k; i++)
+		{
+			finalClustersKMeansCentroid[i] = new GVector(numUniqueTerms);
+		}
+	}
+	
+	// Assigning the first random k number of documents as the starting 
+	// centroids
+	public void assignInitialClusterCentroids(int k)
+	{
+		HashSet<Integer> uniqIndex = new HashSet<Integer>();
+		generateUniqueRandomNumber(uniqIndex, k);
+		
+		int clusterCentroidIndex = 0;
+		for(int num: uniqIndex)
+		{
+			finalClustersKMeansCentroid[clusterCentroidIndex++].add(docNormVectors.get(num));
+		}
+	}
+	
+	// Initialize the previous and current cluster documents count
+	// Contains -1 indicating no prior operation has taken place
+	public void initializeClusterCounts(int k)
+	{
+		clusterDocCounts = new int[k][2];
+		
+		for(int row = 0; row < k; row++)
+		{
+			for(int col = 0; col < 2; col++)
+			{
+				clusterDocCounts[row][col] = 0;
+			}
+		}
+	}
+
+	// Reinitialize the counts for next iteration.
+	// Basically copy the right column in to the left column
+	public void reinitializeClusterCounts(int k)
+	{
+		for(int row = 0; row < k; row++)
+		{
+			clusterDocCounts[row][0] = clusterDocCounts[row][1];
+		}
+	}
+
+	// Initialize the matrices holding the current and previous clusters
+	public void initializeClusterMatrices(int k)
+	{
+		currClusterKMeans = new GMatrix(k, nDocuments);
+		currClusterKMeans.setZero();
+	}
+	
+	// Calculate the cluster document counts
+	public void populateClusterDocumentCount(int k)
+	{
+		for(int row = 0; row < k; row++)
+		{
+			int sum = 0;
+			for(int col = 0; col < nDocuments; col++)
+			{
+				if(currClusterKMeans.getElement(row, col) == 1.0)
+					sum++;
+			}
+			clusterDocCounts[row][1] = sum;
+		}
+	}
+	
+	// Calculate new centroid
+	public void recalculateCentroids(int k)
+	{
+		for(int row = 0; row < k; row++)
+		{
+			GVector temp = new GVector(numUniqueTerms);
+			temp.zero();
+			int docCount = 0;
+			
+			for(int col = 0; col < nDocuments; col++)
+			{
+				if(currClusterKMeans.getElement(row, col) == 1.0)
+				{
+					temp.add(docNormVectors.get(col));
+					docCount++;
+				}
+			}
+			double additivetfidf = 0;
+			for(int i = 0; i < temp.getSize(); i++)
+			{
+				additivetfidf = temp.getElement(i) / (double) docCount;
+				temp.setElement(i, additivetfidf);
+			}
+		}
+	}
+	
+	// Check if cluster movements occured or not
+	public boolean checkClusterChange(int k)
+	{
+		for(int row = 0; row < k; row++)
+		{
+			if(clusterDocCounts[row][0] != clusterDocCounts[row][1])
+				return true;
+		}
+		return false;
+	}
+	
+	// Find closest cluster centroid index
+	public int findClosestClusterCentroidIndex(int k, int docVal)
+	{
+		double prev = 0.0; int index = 0;
+		for(int row = 0; row < k; row++)
+		{
+			double temp = findCosineSimilarity(docVal, finalClustersKMeansCentroid[row]);
+			if(prev < temp)
+			{
+				prev = temp;
+				index = row;
+			}
+		}
+		return index;
+	}
+	
+	// Performing the actual k-means algorithm
+	public void doKMeans(int k)
+	{
+		initializeClusterCentroidKMeans(k);
+		assignInitialClusterCentroids(k);
+		initializeClusterCounts(k);
+		initializeClusterMatrices(k);
+		
+		int repeatCount = 0;
+		
+		do
+		{
+			currClusterKMeans.setZero();
+			for(int i = 0; i < nDocuments; i++)
+			{
+				int row = findClosestClusterCentroidIndex(k, i);
+				currClusterKMeans.setElement(row, i, 1.0);
+			}
+			reinitializeClusterCounts(k);
+			populateClusterDocumentCount(k);
+			if(!checkClusterChange(k))
+				break;
+			else
+				repeatCount++;
+			recalculateCentroids(k);
+			
+		}while(repeatCount < repeat_limit);
+		//printkMeansClusters();
+	}
+	
+	// Printing K-Means Clusters
+	public void printkMeansClusters(int k, String logFileName)
+	{
+		try
+		{
+		FileOutputStream foutlogCluster=new FileOutputStream(logFileName, true);
+		addClustersText("\n K-Means Clusters");
+		logText = "\n K-Means Clusters ";
+		foutlogCluster.write(logText.getBytes());	
+
+		for(int row = 0; row < k; row++)
+		{
+			addClustersText("\n Cluster "+(row + 1)+":");
+			logText = "\n Cluster "+(row + 1)+":";
+			foutlogCluster.write(logText.getBytes());		
+			for(int col = 0; col < nDocuments; col++)
+			{
+				if(currClusterKMeans.getElement(row, col) == 1.0)
+				{
+					addClustersText(" "+col);
+					logText = " "+col;
+					foutlogCluster.write(logText.getBytes());
+				}
+			}
+		}
+		}
+		catch(Exception e)
+		{
+		}
+	}
+			
+		
 	static public void main(String[] args)
 	{
 		try 
