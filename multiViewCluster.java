@@ -80,17 +80,25 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	java.util.ArrayList<GVector> docNormVectors = new java.util.ArrayList<GVector>();
 	GMatrix docMatrix = null;
 	GMatrix initialClusterMatrix = null;
+	GMatrix initialClusterMatrixCopy = null;
 	GMatrix similarityMatrix = null;
-	int[] seedDocumentIndices = null, nr = null;
+	GMatrix similarityMatrixIv = null;
+	int[] seedDocumentIndices = null, nr = null, nrIv = null, nrKMeans = null;
 	java.util.ArrayList<GVector> docClusters = new java.util.ArrayList<GVector>();
 	GVector[] Dr = null;
+	GVector[] DrIv = null;
 	GVector[] Cr = null;
+	GVector[] CrIv = null;
 	GVector D = null, C = null;
+	GVector DIv = null, CIv = null;
 	int numUniqueTerms = 0;
 	java.util.List<Integer> v = new ArrayList<Integer>();
+	java.util.List<Integer> vIv = new ArrayList<Integer>();
 	double alphaVal = 0.3;
 	int algoChoice = 1;
 	GVector[] finalClusters = null;
+	GVector[] finalClustersIv = null;
+	GVector[] finalClustersKmeans = null;
 	GVector[] finalClustersKMeansCentroid = null;
 	GMatrix prevClusterKMeans = null;
 	GMatrix currClusterKMeans = null;
@@ -99,6 +107,17 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	String stopWords;
 	Stemmer s = new Stemmer();
 	int repeat_limit = 10000;
+	int lock_var = 0;
+	int classNum = 0;
+	int[] ni = null;
+	GVector[] classDistribution = null;
+	HashMap<Integer, Integer> classMap = null;
+	
+	int[][] nij_ir = null, nij_iv = null, nij_kmeans = null;
+	double[][] fij_ir = null, fij_iv = null, fij_kmeans = null;
+	double fscore_ir = 0.0, fscore_iv = 0.0, fscore_kmeans = 0.0;
+	double nmi_ir = 0.0, nmi_iv = 0.0, nmi_kmeans = 0.0;
+	double accuracy_ir = 0.0, accuracy_iv = 0.0, accuracy_kmeans = 0.0;
 
 	
 	multiViewCluster()
@@ -289,10 +308,40 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			C = null;
 			numUniqueTerms = 0;
 			finalClusters = null;
+			similarityMatrixIv = null;
+			nrIv = null;
+			DrIv = null;
+			CrIv = null;
+			DIv = null;
+			CIv = null;
+			vIv.clear();
+			nrKMeans = null;
+			ni = null;
+			nij_ir = null;
+			nij_iv = null;
+			nij_kmeans = null;
+			fij_ir = null;
+			fij_iv = null;
+			fij_kmeans = null;
+			fscore_ir = 0.0;
+			fscore_iv = 0.0;
+			fscore_kmeans = 0.0;
+			nmi_ir = 0.0;
+			nmi_iv = 0.0;
+			nmi_kmeans = 0.0;
+			accuracy_ir = 0.0;
+			accuracy_iv = 0.0;
+			accuracy_kmeans = 0.0;
+			finalClustersIv = null;
+			finalClustersKmeans = null;
 			finalClustersKMeansCentroid = null;
+			initialClusterMatrixCopy = null;
 			currClusterKMeans = null;
+			classDistribution = null;
+			classNum = 0;
 			totalWordCount = null;
-			stopWords = null;		
+			stopWords = null;
+			classMap = null;
 			btProcess.setText("Wait");
 			btProcess.updateUI();
 			processData="processlog";
@@ -302,6 +351,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			visitedPages=new String[maxPages];
 			nVisited = 0;
 			nRun = nRun + 1;
+			parseClassInformation();
 			process();
 			btProcess.setText("Done");
 			btProcess.updateUI();
@@ -392,6 +442,501 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			btProcess.setText("Process");
 			btProcess.updateUI();			
 		}		
+	}
+
+	public void calculateFScoreIr()
+	{
+		fscore_ir = 0.0;
+		
+		for(int i = 0; i < classNum; i++)
+		{
+			double nValue = (double) ni[i] / (double) nDocuments;
+			
+			if(Double.isNaN(nValue))
+				nValue = 0.0;
+			
+			double maxFValue = 0.0;
+			
+			for(int col = 0; col < classNum; col++)
+			{
+				if(fij_ir[i][col] > maxFValue)
+					maxFValue = fij_ir[i][col];
+			}
+			
+			fscore_ir = fscore_ir + (nValue * maxFValue);
+		}
+		//txtMessage.append("\nFScore for MVSC-IR: "+fscore_ir);
+	}
+	
+	public void calculateFScoreIv()
+	{
+		fscore_iv = 0.0;
+		
+		for(int i = 0; i < classNum; i++)
+		{
+			double nValue = (double) ni[i] / (double) nDocuments;
+			
+			if(Double.isNaN(nValue))
+				nValue = 0.0;
+			
+			double maxFValue = 0.0;
+			
+			for(int col = 0; col < classNum; col++)
+			{
+				if(fij_iv[i][col] > maxFValue)
+					maxFValue = fij_iv[i][col];
+			}
+			
+			fscore_iv = fscore_iv + (nValue * maxFValue);
+		}
+		//txtMessage.append("\nFScore for MVSC-IV: "+fscore_iv);
+	}
+
+	public void calculateFScoreKmeans()
+	{
+		fscore_kmeans = 0.0;
+		
+		for(int i = 0; i < classNum; i++)
+		{
+			double nValue = (double) ni[i] / (double) nDocuments;
+			
+			if(Double.isNaN(nValue))
+				nValue = 0.0;
+			
+			double maxFValue = 0.0;
+			
+			for(int col = 0; col < classNum; col++)
+			{
+				if(fij_kmeans[i][col] > maxFValue)
+					maxFValue = fij_kmeans[i][col];
+			}
+			
+			fscore_kmeans = fscore_kmeans + (nValue * maxFValue);
+		}
+		//txtMessage.append("\nFScore for K-Means: "+fscore_kmeans);
+	}	
+
+	public void calculateNMIIr()
+	{
+		nmi_ir = 0.0;
+		double numerator = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			for(int j = 0; j < classNum; j++)
+			{
+				if(j < finalClusters.length && nij_ir[i][j] != 0.0)
+				{
+					numerator = numerator + ((double)nij_ir[i][j] * Math.log10(((double)nDocuments * (double)nij_ir[i][j]) / ((double)ni[i] * (double)nr[j])));
+				}
+			}
+		}
+		double denom_first = 0.0, denom_second = 0.0, denominator = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			denom_first = denom_first + ((double)ni[i] * Math.log10((double)ni[i] / (double)nDocuments));
+		}
+		for(int i = 0; i < classNum; i++)
+		{
+			if(i < finalClusters.length)
+				denom_second = denom_second + ((double)nr[i] * Math.log10((double)nr[i] / (double)nDocuments));
+		}
+		denominator = Math.sqrt(denom_first * denom_second);
+		nmi_ir = numerator / denominator;
+		//txtMessage.append("\nNMI for MVSC-IR: "+nmi_ir);
+	}
+
+		public void calculateNMIIv()
+		{
+		nmi_iv = 0.0;
+		double numerator = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			for(int j = 0; j < classNum; j++)
+			{
+				if(j < finalClustersIv.length && nij_iv[i][j] != 0.0)
+					numerator = numerator + ((double)nij_iv[i][j] * Math.log10(((double)nDocuments * (double)nij_iv[i][j]) / ((double)ni[i] * (double)nrIv[j])));
+			}
+		}
+		double denom_first = 0.0, denom_second = 0.0, denominator = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			denom_first = denom_first + ((double)ni[i] * Math.log10((double)ni[i] / (double)nDocuments));
+		}
+		for(int i = 0; i < classNum; i++)
+		{
+			if(i < finalClustersIv.length)
+				denom_second = denom_second + ((double)nrIv[i] * Math.log10((double)nrIv[i] / (double)nDocuments));
+		}
+		denominator = Math.sqrt(denom_first * denom_second);
+		nmi_iv = numerator / denominator;
+		//txtMessage.append("\nNMI for MVSC-IV: "+nmi_iv);
+	}
+	
+	public void calculateNMIKmeans()
+	{
+		nmi_kmeans = 0.0;
+		double numerator = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			for(int j = 0; j < classNum; j++)
+			{
+				if(j < finalClustersKmeans.length && nij_kmeans[i][j] != 0.0)
+					numerator = numerator + ((double)nij_kmeans[i][j] * Math.log10(((double)nDocuments * (double)nij_kmeans[i][j]) / ((double)ni[i] * (double)nrKMeans[j])));
+			}
+		}
+		double denom_first = 0.0, denom_second = 0.0, denominator = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			denom_first = denom_first + ((double)ni[i] * Math.log10((double)ni[i] / (double)nDocuments));
+		}
+		for(int i = 0; i < classNum; i++)
+		{
+			if(i < finalClustersKmeans.length)
+				denom_second = denom_second + ((double)nrKMeans[i] * Math.log10((double)nrKMeans[i] / (double)nDocuments));
+		}
+		denominator = Math.sqrt(denom_first * denom_second);
+		nmi_kmeans = numerator / denominator;
+		//txtMessage.append("\nNMI for MVSC-IV: "+nmi_kmeans);
+	}
+
+	public void calculateAccuracyIr()
+	{
+		double[][] temp = new double[classNum][classNum];
+		
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				temp[row][col] = (double) nij_ir[row][col];
+				temp[row][col] = -1.0 * temp[row][col];
+			}
+		}
+		HungarianAlgorithm ha = new HungarianAlgorithm(temp);
+		
+		int[] resultSet = ha.execute();
+		
+		accuracy_ir = 0.0;
+		double tempSum = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			int k = resultSet[i];
+			tempSum = tempSum + nij_ir[i][k];
+		}
+		accuracy_ir = tempSum * (1 / (double) nDocuments);
+		//txtMessage.append("\nAccuracy for MVSC-Ir: "+accuracy_ir);
+	}	
+	
+	public void calculateAccuracyIv()
+	{
+		double[][] temp = new double[classNum][classNum];
+		
+		for(int row = 0; row < classNum; row++)
+		{
+			for(int col = 0; col < classNum; col++)
+			{
+				temp[row][col] = (double) nij_iv[row][col];
+				temp[row][col] = -1.0 * temp[row][col];
+			}
+		}
+		HungarianAlgorithm ha = new HungarianAlgorithm(temp);
+		
+		int[] resultSet = ha.execute();
+		
+		accuracy_iv = 0.0;
+		double tempSum = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			int k = resultSet[i];
+			tempSum = tempSum + nij_iv[i][k];
+		}
+		accuracy_iv = tempSum * (1 / (double) nDocuments);
+		//txtMessage.append("\nAccuracy for MVSC-Iv: "+accuracy_iv);
+	}
+
+	public void calculateAccuracyKmeans()
+	{
+		double[][] temp = new double[classNum][classNum];
+		
+		for(int row = 0; row < classNum; row++)
+		{
+			for(int col = 0; col < classNum; col++)
+			{
+				temp[row][col] = (double) nij_kmeans[row][col];
+				temp[row][col] = -1.0 * temp[row][col];
+			}
+		}
+		HungarianAlgorithm ha = new HungarianAlgorithm(temp);
+		
+		int[] resultSet = ha.execute();
+		
+		accuracy_kmeans	= 0.0;
+		double tempSum = 0.0;
+		for(int i = 0; i < classNum; i++)
+		{
+			int k = resultSet[i];
+			tempSum = tempSum + nij_kmeans[i][k];
+		}
+		accuracy_kmeans = tempSum * (1 / (double) nDocuments);
+		//txtMessage.append("\nAccuracy for K-Means: "+accuracy_kmeans);
+	}
+	
+	// Retrieve the cluster in which a particular document falls
+	public void getFinalClusterNumbersIr()
+	{
+		for(int row = 0; row < finalClusters.length; row++)
+		{
+			nr[row] = finalClusters[row].getSize();
+		}
+	}
+
+	// Retrieve the cluster in which a particular document falls
+	public void getFinalClusterNumbersIv()
+	{
+		for(int row = 0; row < finalClustersIv.length; row++)
+		{
+			nrIv[row] = finalClustersIv[row].getSize();
+		}
+	}
+
+	// Retrieve the cluster in which a particular document falls
+	public void getFinalClusterNumbersKmeans()
+	{
+		nrKMeans = new int[finalClustersKmeans.length];
+		
+		for(int row = 0; row < finalClustersKmeans.length; row++)
+		{
+			nrKMeans[row] = finalClustersKmeans[row].getSize();
+		}
+	}	
+	
+	public void populatenijir()
+	{
+		HashMap<Integer, Integer> clusterIrMap = new HashMap<Integer, Integer>();
+		nij_ir = new int[classNum][classNum];
+		fij_ir = new double[classNum][classNum];
+		
+		double pij, rij;
+		
+		for(int i = 0; i < nDocuments; i++)
+			clusterIrMap.put(i, getFinalCluster(i));
+		
+		getFinalClusterNumbersIr();
+		
+		for(int row = 0; row < classNum; row++)
+		{
+			for(int col = 0; col < classNum; col++)
+			{
+				int docCount = 0;
+				for(int doc = 0; doc < nDocuments; doc++)
+				{
+						if(clusterIrMap.get(doc) == col && classMap.get(doc) == row)
+							docCount++;
+				}
+				nij_ir[row][col] = docCount;
+				if(col > finalClusters.length - 1)
+				{
+					pij = 0.0;
+				}
+				else
+				{
+					pij = (double) nij_ir[row][col] / (double) nr[col];
+				}
+				rij = (double) nij_ir[row][col] / (double) ni[row];
+				if(Double.isNaN(pij))
+					pij = 0.0;
+				if(Double.isNaN(rij))
+					rij = 0.0;
+				fij_ir[row][col] = (2 * pij * rij) / (pij + rij);
+				if(Double.isNaN(fij_ir[row][col]))
+					fij_ir[row][col] = 0.0;
+			}
+		}
+		/*txtMessage.append("\nMVSC-Ir");
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				txtMessage.append(" "+nij_ir[row][col]);
+			}
+		}
+		txtMessage.append("\nMVSC-Ir Fij");
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				txtMessage.append(" "+fij_ir[row][col]);
+			}
+		}*/		
+		
+	}
+
+	public void populatenijiv()
+	{
+		HashMap<Integer, Integer> clusterIvMap = new HashMap<Integer, Integer>();
+		nij_iv = new int[classNum][classNum];
+		fij_iv = new double[classNum][classNum];
+		
+		double pij, rij;
+		
+		for(int i = 0; i < nDocuments; i++)
+			clusterIvMap.put(i, getFinalClusterIv(i));
+		
+		getFinalClusterNumbersIv();
+		
+		for(int row = 0; row < classNum; row++)
+		{
+			for(int col = 0; col < classNum; col++)
+			{
+				int docCount = 0;
+				for(int doc = 0; doc < nDocuments; doc++)
+				{
+						if(clusterIvMap.get(doc) == col && classMap.get(doc) == row)
+							docCount++;
+				}
+				nij_iv[row][col] = docCount;
+				if(col > finalClustersIv.length - 1)
+				{
+					pij = 0.0;
+				}
+				else
+				{
+					pij = (double) nij_iv[row][col] / (double) nrIv[col];
+				}
+				rij = (double) nij_iv[row][col] / (double) ni[row];
+				//txtMessage.append("\nrow: "+row+" col: "+col+" nij: "+nij_iv[row][col]+" nrIv: "+nrIv[col]+" ni: "+ni[row]+" pij: "+pij+" rij: "+rij);
+				if(Double.isNaN(pij))
+					pij = 0.0;
+				if(Double.isNaN(rij))
+					rij = 0.0;
+				fij_iv[row][col] = (2 * pij * rij) / (pij + rij);
+				if(Double.isNaN(fij_iv[row][col]))
+					fij_iv[row][col] = 0.0;				
+			}
+		}
+		/*txtMessage.append("\nMVSC-Iv");
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				txtMessage.append(" "+nij_iv[row][col]);
+			}
+		}
+		txtMessage.append("\nMVSC-Iv Fij");
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				txtMessage.append(" "+fij_iv[row][col]);
+			}
+		}*/		
+	}
+
+	public void populatenijkmeans()
+	{
+		HashMap<Integer, Integer> clusterKMeansMap = new HashMap<Integer, Integer>();
+		nij_kmeans = new int[classNum][classNum];
+		fij_kmeans = new double[classNum][classNum];
+		
+		double pij, rij;
+		
+		for(int i = 0; i < nDocuments; i++)
+			clusterKMeansMap.put(i, getFinalClusterKMeans(i));
+		
+		getFinalClusterNumbersKmeans();	
+		
+		for(int row = 0; row < classNum; row++)
+		{
+			for(int col = 0; col < classNum; col++)
+			{
+				int docCount = 0;
+				for(int doc = 0; doc < nDocuments; doc++)
+				{
+						if(clusterKMeansMap.get(doc) == col && classMap.get(doc) == row)
+							docCount++;
+				}
+				nij_kmeans[row][col] = docCount;
+				if(col > finalClustersKmeans.length - 1)
+				{				
+					pij = 0.0;
+				}
+				else
+				{
+					pij = (double) nij_kmeans[row][col] / (double) nrKMeans[col];
+				}
+				rij = (double) nij_kmeans[row][col] / (double) ni[row];
+				if(Double.isNaN(pij))
+					pij = 0.0;
+				if(Double.isNaN(rij))
+					rij = 0.0;
+				fij_kmeans[row][col] = (2 * pij * rij) / (pij + rij);
+				if(Double.isNaN(fij_kmeans[row][col]))
+					fij_kmeans[row][col] = 0.0;					
+			}
+		}
+		/*txtMessage.append("\n K-Means");
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				txtMessage.append(" "+nij_kmeans[row][col]);
+			}
+		}
+		txtMessage.append("\nKMeans Fij");
+		for(int row = 0; row < classNum; row++)
+		{
+			txtMessage.append("\n");
+			for(int col = 0; col < classNum; col++)
+			{
+				txtMessage.append(" "+fij_kmeans[row][col]);
+			}
+		}*/	
+	}
+	
+	public void parseClassInformation()
+	{
+		try
+		{
+			Scanner fileName = new Scanner(new File(dirName+"classInfo.txt"));
+			int LineCount = 0, clusterIndex = 0;
+			
+			classMap = new HashMap<Integer, Integer>();
+			
+			while(fileName.hasNext())  
+			{	// if file is not empty yet
+				String line=fileName.nextLine().trim();
+				if(LineCount == 0)
+				{
+					classNum = Integer.parseInt(line);
+					classDistribution = new GVector[classNum];
+					ni = new int[classNum];
+					LineCount = 1;
+				}
+				else
+				{
+					String[] clusterDocNumArray = line.split(",");
+					classDistribution[clusterIndex] = new GVector(clusterDocNumArray.length);
+					for(int i = 0; i < clusterDocNumArray.length; i++)
+					{
+						classMap.put(Integer.parseInt(clusterDocNumArray[i].trim()), clusterIndex);
+						classDistribution[clusterIndex].setElement(i, (double)Integer.parseInt(clusterDocNumArray[i].trim()));
+					}
+					ni[clusterIndex] = clusterDocNumArray.length;
+					clusterIndex++;
+				}
+			}
+			/*for(Integer a: classMap.keySet())
+				txtMessage.append("\nDocNum "+a+" ClusterNum "+classMap.get(a));*/
+		}
+		catch(Exception e)
+		{
+			txtMessage.append("\nError reading file: "+e);
+		}
 	}
 	
 	public String doStemmer(String inputWord)
@@ -694,19 +1239,42 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			similarityPath = "Similarity_Log_run_" + nRun + "_" + timeStamp_now + ".txt";
 			FileOutputStream foutlog_similarity=new FileOutputStream(similarityPath);
 			
-			addClusterDocumentScoreText("\n Pairwise Document MVS Similarity Scores based on clusters formed\n");
+			addClusterDocumentScoreText("\n Pairwise Document MVS Similarity Scores based on clusters formed using MVSC-IR\n");
+			logText = "\n Pairwise Document MVS Similarity Scores based on clusters formed using MVSC-IR\n";
+			foutlog_similarity.write(logText.getBytes());			
 			
 			for(int row = 0; row < similarityMatrix.getNumRow(); row++)
 			{
 				for(int col = 0; col < similarityMatrix.getNumCol(); col++)
 				{
 					addClusterDocumentScoreText("\n Document Pair("+row+","+col+") \t MVS Similarity Score: "+similarityMatrix.getElement(row, col)+"\n");
+					logText = "\n Document Pair("+row+","+col+") \t MVS Similarity Score: "+similarityMatrix.getElement(row, col)+"\n";
+					foutlog_similarity.write(logText.getBytes());					
 					logText = " "+similarityMatrix.getElement(row, col);
 					foutlog_similarity.write(logText.getBytes());
 				}
 				foutlog_similarity.write(logText.getBytes());
 			}
 			foutlog_similarity.write(logText.getBytes());
+			
+			addClusterDocumentScoreText("\n\n Pairwise Document MVS Similarity Scores based on clusters formed using MVSC-IV\n");
+			logText = "\n\n Pairwise Document MVS Similarity Scores based on clusters formed using MVSC-IV\n";
+			foutlog_similarity.write(logText.getBytes());			
+			
+			for(int row = 0; row < similarityMatrixIv.getNumRow(); row++)
+			{
+				for(int col = 0; col < similarityMatrixIv.getNumCol(); col++)
+				{
+					addClusterDocumentScoreText("\n Document Pair("+row+","+col+") \t MVS Similarity Score: "+similarityMatrixIv.getElement(row, col)+"\n");
+					logText = "\n Document Pair("+row+","+col+") \t MVS Similarity Score: "+similarityMatrixIv.getElement(row, col)+"\n";
+					foutlog_similarity.write(logText.getBytes());
+					logText = " "+similarityMatrixIv.getElement(row, col);
+					foutlog_similarity.write(logText.getBytes());
+				}
+				foutlog_similarity.write(logText.getBytes());
+			}
+			foutlog_similarity.write(logText.getBytes());	
+			
 			foutlog_similarity.close();
 		}
 		catch(Exception e)
@@ -733,8 +1301,9 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	}
 	
 	// MVS Similarity scores for all document pairs
-	public void similarityMatrix(String logFileName)
+	public int similarityMatrix(String logFileName)
 	{
+		lock_var = 1;
 		txtClustersDocScores.setText("");
 		
 		similarityMatrix = new GMatrix(nDocuments, nDocuments);
@@ -751,13 +1320,13 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 		{
 			FileOutputStream foutlog=new FileOutputStream(logFileName, true);
 			logText = "\nSimilarity Matrix Generation";
-			foutlog.write(logText.getBytes());
+			//foutlog.write(logText.getBytes());
 			logText = "\nD Vector Generation";
-			foutlog.write(logText.getBytes());
+			//foutlog.write(logText.getBytes());
 			for(int j = 0; j < finalClusters.length; j++)
 			{
 				logText = "\nD(S/S"+j+") Vector Generation";
-				foutlog.write(logText.getBytes());
+				//foutlog.write(logText.getBytes());
 				for(int k = 0; k < finalClusters.length; k++)
 				{
 					if(j != k)
@@ -765,12 +1334,12 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 						for(int l = 0; l < finalClusters[k].getSize(); l++)
 						{
 							logText = "\n\tAdding doc index "+finalClusters[k].getElement(l)+" from cluster "+k;
-							foutlog.write(logText.getBytes());
+							//foutlog.write(logText.getBytes());
 							Dvalues[j].add(docNormVectors.get((int)finalClusters[k].getElement(l)));
 							logText = "\n\tAdded Vector: "+docNormVectors.get((int)finalClusters[k].getElement(l)).toString();
-							foutlog.write(logText.getBytes());
+							//foutlog.write(logText.getBytes());
 							logText = "\n\tResult Vector: "+Dvalues[j].toString();
-							foutlog.write(logText.getBytes());
+							//foutlog.write(logText.getBytes());
 						}
 					}
 				}
@@ -830,12 +1399,17 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 				logText = "\n";
 				foutlog.write(logText.getBytes());
 			}
+			lock_var = 0;
+			
+			
 		}
 		catch(Exception e)
 		{
+			lock_var = 0;
 			txtMessage.append("Error Occured: \n");
 			txtMessage.append(e+"\n");		
 		}
+		return 1;
 	}
 	// Finding the stuff parsed in each document
 	public void showContentParsing()
@@ -966,12 +1540,12 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			for(int t=0;t<=docVectors.size()-1;t++)
 			{	
 				logText = "Doc: "+(t)+" Contents: "+docVectors.get(t).toString();
-				foutlog.write(logText.getBytes());
+				//foutlog.write(logText.getBytes());
 				logText = "\n Norm of Vector = "+docVectors.get(t).norm();
 				GVector tempVector = docVectors.get(t);
 				tempVector.normalize(tempVector);
 				docNormVectors.add(tempVector);
-				foutlog.write(logText.getBytes());
+				//foutlog.write(logText.getBytes());
 				logText = "\n Normalized Vector = "+docNormVectors.get(t).toString();
 				foutlog.write(logText.getBytes());
 				logText = "\n Norm of Vector = "+docNormVectors.get(t).norm();
@@ -982,8 +1556,15 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			logText = "\n ----------------------------------------------------------------";
 			foutlog.write(logText.getBytes());				
 			logText = "\n Initial Cluster Matrix: ";
-			foutlog.write(logText.getBytes());		
-			formInitialClusters();			
+			foutlog.write(logText.getBytes());	
+			
+
+			while(formInitialClusters() != 1)
+			{
+			}
+
+			
+			initialClusterMatrixCopy = new GMatrix(initialClusterMatrix);
 			for(int t = 0; t < initialClusterMatrix.getNumRow(); t++)
 			{
 				logText = "\n Cluster: "+(t)+" Values: ";
@@ -1022,18 +1603,147 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			foutlog.write(logText.getBytes());
 			logText = "\n ----------------------------------------------------------------";
 			foutlog.write(logText.getBytes());	
-			if(algoChoice == 1)
-				logText = "\n Clustering Using MVSC-IR ";
-			else if(algoChoice == 2)
-				logText = "\n Clustering Using MVSC-IV ";
-			foutlog.write(logText.getBytes());
+			algoChoice = 1;
+
+			while(performRefinementStep(parsePath) != 1)
+			{
+			}
+
 			
-			performRefinementStep(parsePath);
+
+			while(similarityMatrix(parsePath) != 1)
+			{
+			}
 			
-			similarityMatrix(parsePath);
+			populatenijir();
+
 			
-			doKMeans(4);
+			DrIv = null;
+			CrIv = null;
+			DIv = null;
+			CIv = null;
+			vIv.clear();
 			
+			/*initialClusterMatrix.setZero();
+			initialClusterMatrix.add(initialClusterMatrixCopy);*/
+			
+			calculateNrDrDIv();
+			
+			String timeStamp_nowIv = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
+			String parsePathIv = "Parse_Log_Iv_run_" + nRun + "_" + timeStamp_nowIv + ".txt";
+			FileOutputStream foutlogIv=new FileOutputStream(parsePathIv);	
+			
+			algoChoice = 2;
+/*			logText = "\n ----------------------------------------------------------------";
+			foutlogIv.write(logText.getBytes());
+			logText = "\n Clustering Using MVSC-IV ";
+			foutlogIv.write(logText.getBytes());				
+			logText = "\n Initial Cluster Matrix: ";
+			foutlogIv.write(logText.getBytes());		
+			for(int t = 0; t < initialClusterMatrixCopy.getNumRow(); t++)
+			{
+				logText = "\n Cluster: "+(t)+" Values: ";
+				foutlogIv.write(logText.getBytes());
+				for(int k = 0; k < initialClusterMatrixCopy.getNumCol(); k++)
+				{
+					logText = " "+initialClusterMatrixCopy.getElement(t, k);
+					foutlogIv.write(logText.getBytes());
+				}
+			}
+			logText = "\n ----------------------------------------------------------------";
+			foutlogIv.write(logText.getBytes());				
+			logText = "\n Cluster Counts: ";
+			foutlogIv.write(logText.getBytes());
+			for(int t = 0; t < nrIv.length; t++)
+			{
+				logText = "\nCluster : "+(t)+" Count: "+nrIv[t];
+				foutlogIv.write(logText.getBytes());
+			}
+			logText = "\n ----------------------------------------------------------------";
+			foutlogIv.write(logText.getBytes());				
+			logText = "\n Composite Vectors: ";
+			foutlogIv.write(logText.getBytes());
+			for(int t = 0; t < seedDocumentIndices.length; t++)
+			{
+				logText = "\nCluster : "+(t)+" Composite Vector: "+DrIv[t].toString();
+				foutlogIv.write(logText.getBytes());
+			}	
+			logText = "\n ----------------------------------------------------------------";
+			foutlogIv.write(logText.getBytes());				
+			logText = "\n Value of D and C: ";
+			foutlogIv.write(logText.getBytes());
+			logText = "\nValue of D ["+DIv.toString()+"]";
+			foutlogIv.write(logText.getBytes());			
+			logText = "\nValue of C ["+CIv.toString()+"]";
+			foutlogIv.write(logText.getBytes());
+			logText = "\n ----------------------------------------------------------------";
+			foutlogIv.write(logText.getBytes());	
+			*/
+			
+			while(performRefinementStepIv(parsePathIv) != 1)
+			{
+			}
+
+			
+
+			while(similarityMatrixIv(parsePathIv) != 1)
+			{
+			}
+			
+			populatenijiv();
+			
+			/*String timeStamp_nowKMeans = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
+			String KMeansPath = "K-Means_Run_" + nRun + "_" + timeStamp_nowKMeans + ".txt";
+			FileOutputStream foutlogKMeans=new FileOutputStream(KMeansPath);
+
+			logText = "\n ----------------------------------------------------------------";
+			foutlogKMeans.write(logText.getBytes());				
+			logText = "\n K-Means Algorithm Run";
+			foutlogKMeans.write(logText.getBytes());*/
+			//
+			
+			doKMeans(classNum);
+			populatenijkmeans();
+			
+			calculateFScoreIr();
+			calculateNMIIr();
+			calculateAccuracyIr();
+			
+			calculateFScoreIv();
+			calculateNMIIv();			
+			calculateAccuracyIv();			
+			
+			calculateFScoreKmeans();
+			calculateNMIKmeans();
+			calculateAccuracyKmeans();
+			
+			String timeStamp_nowMeasures = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
+			String measuresPath = "Measures_Log_run_" + nRun + "_" + timeStamp_nowMeasures + ".txt";
+			FileOutputStream foutlogMeasures=new FileOutputStream(measuresPath);		
+
+			logText = "\nMeasures for the Algorithms";
+			foutlogMeasures.write(logText.getBytes());
+			logText = "\n\nFScore measures";
+			foutlogMeasures.write(logText.getBytes());	
+			logText = "\n---------------";
+			foutlogMeasures.write(logText.getBytes());			
+			logText = "\nMVSCIr: "+fscore_ir+" MVSCIv: "+fscore_iv+" K-Means: "+fscore_kmeans;
+			foutlogMeasures.write(logText.getBytes());
+			logText = "\n\nNMI measures";
+			foutlogMeasures.write(logText.getBytes());	
+			logText = "\n------------";
+			foutlogMeasures.write(logText.getBytes());			
+			logText = "\nMVSCIr: "+nmi_ir+" MVSCIv: "+nmi_iv+" K-Means: "+nmi_kmeans;
+			foutlogMeasures.write(logText.getBytes());	
+			logText = "\n\nAccuracy measures";
+			foutlogMeasures.write(logText.getBytes());	
+			logText = "\n-----------------";
+			foutlogMeasures.write(logText.getBytes());			
+			logText = "\nMVSCIr: "+accuracy_ir+" MVSCIv: "+accuracy_iv+" K-Means: "+accuracy_kmeans;
+			foutlogMeasures.write(logText.getBytes());	
+			foutlogMeasures.close();
+			
+			foutlogIv.close();
 			foutlog.close();
 		}
 		catch(Exception e)
@@ -1057,7 +1767,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// This is part of the Initialization process
 	public void setInitialClusterIndices()
 	{
-		int initialNumOfClusters = Math.round(nDocuments * 3 / 4);
+		int initialNumOfClusters = classNum;
 		
 		seedDocumentIndices = new int[initialNumOfClusters];
 		int seedDocumentIndicesIndex = 0;
@@ -1087,17 +1797,26 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 		return max;
 	}
 	
-	//Forming initial clusters as part of the Initialization step
-	public void formInitialClusters()
+	// Calculate the Dr, Nr, and D values along with Cr and C
+	public void calculateNrDrD()
 	{
+		nr = new int[seedDocumentIndices.length];
+		Dr = new GVector[seedDocumentIndices.length];
+		Cr = new GVector[seedDocumentIndices.length];
+		
+		calculateNr();
+		calculateDr();
+		calculateD();	
+	}
+	
+	//Forming initial clusters as part of the Initialization step
+	public int formInitialClusters()
+	{
+		lock_var = 1;
 		setInitialClusterIndices();
 		
 		initialClusterMatrix = new GMatrix(seedDocumentIndices.length, nDocuments);
 		initialClusterMatrix.setZero();
-		
-		nr = new int[seedDocumentIndices.length];
-		Dr = new GVector[seedDocumentIndices.length];
-		Cr = new GVector[seedDocumentIndices.length];
 		
 		for(int j = 0; j < nDocuments; j++)
 		{
@@ -1107,9 +1826,10 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			//txtMessage.append("\nDone getClusterNumber for document "+j+" Cluster Assigned: "+rowVal);
 		}
 		
-		calculateNr();
-		calculateDr();
-		calculateD();
+		calculateNrDrD();
+		lock_var = 0;
+		
+		return 1;
 	}
 	
 	//Calculating the number of documents per cluster nr
@@ -1183,8 +1903,8 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			double tempValue = D.getElement(b) / nDocuments;
 			C.setElement(b, tempValue);
 		}
-		txtMessage.append("\nD: "+D.toString());
-		txtMessage.append("\nC: "+C.toString());		
+		//txtMessage.append("\nD: "+D.toString());
+		//txtMessage.append("\nC: "+C.toString());		
 	}
 	
 	// Creating v list with document indices
@@ -1220,7 +1940,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	}
 
 	// Composite Value of a vector calculated using Iv formula
-	public double calculateIusingIv(int nFactor, GVector vectorFactor)
+/*	public double calculateIusingIv(int nFactor, GVector vectorFactor)
 	{
 		double normVectorFactor = vectorFactor.norm();
 		double factorOne = (nDocuments + normVectorFactor) / (nDocuments - nFactor);
@@ -1230,7 +1950,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 		double valueIusingIv = (factorOne * normVectorFactor) - (factorTwo * (dotProduct / normVectorFactor));
 		
 		return valueIusingIv;
-	}	
+	}	*/
 
 	//Getting value q in the Refinement step based on IR
 	public int getQNumberUsingIr(int pValue, int iValue, GVector vectorFactor)
@@ -1257,7 +1977,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	}
 
 	//Getting value q in the Refinement step based on IV
-	public int getQNumberUsingIv(int pValue, int iValue, GVector vectorFactor)
+	/*public int getQNumberUsingIv(int pValue, int iValue, GVector vectorFactor)
 	{
 		double currValue = 0.0, prev = 0.0;
 		int max = 0;
@@ -1278,7 +1998,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			}
 		}
 		return max;
-	}	
+	}	*/
 	
 	// Reassign cluster for a particular document in the Refinement step
 	public int reassignCluster(int iValue, int pValue, int qValue)
@@ -1336,20 +2056,23 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// Refinement step based on choice of clustering criterion to be used
 	// 1 - MVSC-IR
 	// 2 - MVSC-IV
-	public void performRefinementStep(String logFileName)
+	public int performRefinementStep(String logFileName)
 	{
-		int hasDocumentMoved = 1, iVal = 0, pVal = 0, qVal = 0;
+		lock_var = 1;
+		int hasDocumentMoved = 1, iVal = 0, pVal = 0, qVal = 0, totalNumRuns = 0;;
 		double deltaIp = 0.0, deltaIq = 0.0;
 		GVector tempV = new GVector(numUniqueTerms);
 		createV();
+
 		
 		try
 		{
 			FileOutputStream foutlog=new FileOutputStream(logFileName, true);
 		
-			while(hasDocumentMoved != 0)
+			while(hasDocumentMoved != 0 && totalNumRuns < 20000)
 			{
 				hasDocumentMoved = 0;
+				totalNumRuns++;
 				generatePermutationv();
 				
 				for(int j = 0; j < v.size(); j++)
@@ -1366,7 +2089,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 					}
 					
 					logText = "\nj = "+j+" iVal = "+iVal+" pVal = "+pVal;
-					foutlog.write(logText.getBytes());
+					//foutlog.write(logText.getBytes());
 					
 					if(algoChoice == 1)
 					{
@@ -1374,8 +2097,12 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 						tempV.sub(Dr[pVal], docNormVectors.get(iVal));
 
 						deltaIp = calculateIusingIr(nr[pVal] - 1, tempV) - calculateIusingIr(nr[pVal], Dr[pVal]);
+						if(Double.isNaN(deltaIp))
+						{
+							deltaIp = 0.0;
+						}
 						logText = "\n\tdeltaIp Calculation: \n\tnp-1 = "+(nr[pVal]-1)+"\n\tDp-di: "+tempV.toString()+"\n\tnp = "+nr[pVal]+"\n\tDp: "+Dr[pVal];
-						foutlog.write(logText.getBytes());
+						//foutlog.write(logText.getBytes());
 						
 						qVal = getQNumberUsingIr(pVal, iVal, docNormVectors.get(iVal));
 						
@@ -1383,9 +2110,13 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 						tempV.add(Dr[qVal], docNormVectors.get(iVal));	
 						
 						deltaIq = calculateIusingIr(nr[qVal] + 1, tempV) - calculateIusingIr(nr[qVal], Dr[qVal]);
+						if(Double.isNaN(deltaIq))
+						{
+							deltaIq = 0.0;
+						}
 						
 						logText = "\n\tdeltaIq Calculation: \n\tnq+1 = "+(nr[qVal]+1)+"\n\tDq+di: "+tempV.toString()+"\n\tnq = "+nr[qVal]+"\n\tDq: "+Dr[qVal];
-						foutlog.write(logText.getBytes());
+						//foutlog.write(logText.getBytes());
 					}
 					else if(algoChoice == 2)
 					{
@@ -1393,9 +2124,13 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 						tempV.sub(Dr[pVal], docNormVectors.get(iVal));
 						
 						deltaIp = calculateIusingIv(nr[pVal] - 1, tempV) - calculateIusingIv(nr[pVal], Dr[pVal]);
+						if(Double.isNaN(deltaIp))
+						{
+							deltaIp = 0.0;
+						}
 						
 						logText = "\n\tdeltaIp Calculation: \n\tnp-1 = "+(nr[pVal]-1)+"\n\tDp-di: "+tempV.toString()+"\n\tnp = "+nr[pVal]+"\n\tDp: "+Dr[pVal];
-						foutlog.write(logText.getBytes());	
+						//foutlog.write(logText.getBytes());	
 						
 						qVal = getQNumberUsingIv(pVal, iVal, docNormVectors.get(iVal));
 						
@@ -1403,13 +2138,17 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 						tempV.add(Dr[qVal], docNormVectors.get(iVal));
 						
 						deltaIq = calculateIusingIv(nr[qVal] + 1, tempV) - calculateIusingIv(nr[qVal], Dr[qVal]);
+						if(Double.isNaN(deltaIq))
+						{
+							deltaIq = 0.0;
+						}
 						
 						logText = "\n\tdeltaIq Calculation: \n\tnq+1 = "+(nr[qVal]+1)+"\n\tDq+di: "+tempV.toString()+"\n\tnq = "+nr[qVal]+"\n\tDq: "+Dr[qVal];
-						foutlog.write(logText.getBytes());						
+						//foutlog.write(logText.getBytes());						
 					}
 					
 					logText = "\nqVal = "+qVal+" deltaIp = "+deltaIp+" deltaIq = "+deltaIq+" delIp + delIq = "+(deltaIp + deltaIq);
-					foutlog.write(logText.getBytes());	
+					//foutlog.write(logText.getBytes());	
 					
 					if((deltaIp + deltaIq) > 0.0)
 					{
@@ -1419,6 +2158,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 						reCalculateDr(pVal);
 						reCalculateDr(qVal);
 						hasDocumentMoved = 1;
+						
 					}
 				}
 			}
@@ -1439,7 +2179,7 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			}
 			logText = "\n ----------------------------------------------------------------";
 			foutlog.write(logText.getBytes());		
-			logText = "\nFinal Clusters: "; 
+			logText = "\nFinal Clusters using algorithm "+algoChoice; 
 			foutlog.write(logText.getBytes());
 			
 			int numOfClustersFinal = 0;		
@@ -1513,13 +2253,32 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 					//Clusters.getItemset(k).addItem(""+tempNum);
 				}
 			}
+			
+			logText = "\n ----------------------------------------------------------------";
+			foutlog.write(logText.getBytes());				
+			/*logText = "\n Initial Cluster Copy Matrix: ";
+			foutlog.write(logText.getBytes());		
+			for(int t = 0; t < initialClusterMatrixCopy.getNumRow(); t++)
+			{
+				logText = "\n Cluster: "+(t)+" Values: ";
+				foutlog.write(logText.getBytes());
+				for(int k = 0; k < initialClusterMatrixCopy.getNumCol(); k++)
+				{
+					logText = " "+initialClusterMatrixCopy.getElement(t, k);
+					foutlog.write(logText.getBytes());
+				}
+			}	*/
+			lock_var = 0;
+			
+
 		}
 		catch(Exception e)
 		{
+			lock_var = 0;
 			txtMessage.append("Error Occured in refinement: \n");
 			txtMessage.append(e+"\n");		
 		}		
-				
+		return 1;		
 	}
 	
 	//display clusters
@@ -1529,10 +2288,13 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 		{
 			String timeStamp_now = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
 			clusterPath = "Cluster_Log_run_" + nRun + "_" + timeStamp_now + ".txt";
-			FileOutputStream foutlogCluster=new FileOutputStream(clusterPath);
+			FileOutputStream foutlogCluster=new FileOutputStream(clusterPath, true);
 			
 			//int nClusters=0;
 			txtClusters.setText("");
+			addClustersText("\nClusters formed with MVSC-Ir");
+			logText = "\nClusters formed with MVSC-Ir"; 
+			foutlogCluster.write(logText.getBytes());			
 			for(int k = 0; k < finalClusters.length; k++)
 			{
 				addClustersText("\nCluster: "+k+" ->");
@@ -1550,9 +2312,30 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 			addClustersText("\nNumber of clusters formed: "+finalClusters.length);
 			logText = "\nNumber of clusters formed: "+finalClusters.length;
 			foutlogCluster.write(logText.getBytes());
+			
+			addClustersText("\n\nClusters formed with MVSC-Iv");
+			logText = "\n\nClusters formed with MVSC-Iv"; 
+			foutlogCluster.write(logText.getBytes());			
+			for(int k = 0; k < finalClustersIv.length; k++)
+			{
+				addClustersText("\nCluster: "+k+" ->");
+				logText = "\nFinal Cluster: "+(k+1)+" -> "; 
+				foutlogCluster.write(logText.getBytes());
+				for(int m = 0; m < finalClustersIv[k].getSize(); m++)
+				{
+					int tempNum = (int)finalClustersIv[k].getElement(m);
+					addClustersText(" "+tempNum);
+					logText = " "+tempNum;
+					foutlogCluster.write(logText.getBytes());
+					//Clusters.getItemset(k).addItem(""+tempNum);
+				}
+			}
+			addClustersText("\nNumber of clusters formed: "+finalClustersIv.length);
+			logText = "\nNumber of clusters formed: "+finalClustersIv.length;
+			foutlogCluster.write(logText.getBytes());			
 
 			foutlogCluster.close();
-			printkMeansClusters(4,clusterPath);
+			printkMeansClusters(classNum,clusterPath);
 		}
 		catch(Exception e)
 		{
@@ -1838,11 +2621,21 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// way
 	public void initializeClusterCentroidKMeans(int k)
 	{
-		finalClustersKMeansCentroid = new GVector[k];
-		
-		for(int i = 0; i < k; i++)
+		try
 		{
-			finalClustersKMeansCentroid[i] = new GVector(numUniqueTerms);
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);
+			finalClustersKMeansCentroid = new GVector[k];
+			
+			for(int i = 0; i < k; i++)
+			{
+				finalClustersKMeansCentroid[i] = new GVector(numUniqueTerms);
+			}
+			logText = "\nInitialized K-Means initial cluster centroids";
+			//foutlog.write(logText.getBytes());
+			//foutlog.close();			
+		}
+		catch(Exception e)
+		{
 		}
 	}
 	
@@ -1850,13 +2643,27 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// centroids
 	public void assignInitialClusterCentroids(int k)
 	{
-		HashSet<Integer> uniqIndex = new HashSet<Integer>();
-		generateUniqueRandomNumber(uniqIndex, k);
-		
-		int clusterCentroidIndex = 0;
-		for(int num: uniqIndex)
+		try
 		{
-			finalClustersKMeansCentroid[clusterCentroidIndex++].add(docNormVectors.get(num));
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);	
+			HashSet<Integer> uniqIndex = new HashSet<Integer>();
+			generateUniqueRandomNumber(uniqIndex, k);
+			logText = "\nAssigning K-Means initial cluster centroids";
+			//foutlog.write(logText.getBytes());		
+		
+			int clusterCentroidIndex = 0;
+			for(int num: uniqIndex)
+			{
+				finalClustersKMeansCentroid[clusterCentroidIndex++].add(docNormVectors.get(num));
+				logText = "\nNumber selected: "+num+" For centroid index: "+(clusterCentroidIndex - 1);
+				//foutlog.write(logText.getBytes());
+				logText = "\nVector selected: "+docNormVectors.get(num).toString();
+				//foutlog.write(logText.getBytes());			
+			}
+			//foutlog.close();	
+		}
+		catch(Exception e)
+		{
 		}
 	}
 	
@@ -1864,14 +2671,25 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// Contains -1 indicating no prior operation has taken place
 	public void initializeClusterCounts(int k)
 	{
-		clusterDocCounts = new int[k][2];
-		
-		for(int row = 0; row < k; row++)
+		try
 		{
-			for(int col = 0; col < 2; col++)
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);			
+			clusterDocCounts = new int[k][2];
+		
+			for(int row = 0; row < k; row++)
 			{
-				clusterDocCounts[row][col] = 0;
+				for(int col = 0; col < 2; col++)
+				{
+					clusterDocCounts[row][col] = 0;
+				}
 			}
+			
+			logText = "\nInitialized cluster document counts array";
+			//foutlog.write(logText.getBytes());
+			//foutlog.close();	
+		}
+		catch(Exception e)
+		{
 		}
 	}
 
@@ -1879,57 +2697,108 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// Basically copy the right column in to the left column
 	public void reinitializeClusterCounts(int k)
 	{
-		for(int row = 0; row < k; row++)
+		try
 		{
-			clusterDocCounts[row][0] = clusterDocCounts[row][1];
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);		
+			logText = "\nReinitializing cluster counts tracker";
+			//foutlog.write(logText.getBytes());				
+			for(int row = 0; row < k; row++)
+			{
+				logText = "\nLeft Column Value: "+clusterDocCounts[row][0]+" Right Column Value: "+clusterDocCounts[row][1];
+				clusterDocCounts[row][0] = clusterDocCounts[row][1];
+				//foutlog.write(logText.getBytes());				
+			}
+			//foutlog.close();
+		}
+		catch(Exception e)
+		{
 		}
 	}
 
 	// Initialize the matrices holding the current and previous clusters
 	public void initializeClusterMatrices(int k)
 	{
-		currClusterKMeans = new GMatrix(k, nDocuments);
-		currClusterKMeans.setZero();
+		try
+		{
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);	
+			currClusterKMeans = new GMatrix(k, nDocuments);
+			currClusterKMeans.setZero();
+			logText = "\nInitialized cluster matrices";
+			//foutlog.write(logText.getBytes());
+			//foutlog.close();	
+		}
+		catch(Exception e)
+		{
+		}
 	}
 	
 	// Calculate the cluster document counts
 	public void populateClusterDocumentCount(int k)
 	{
-		for(int row = 0; row < k; row++)
+		try
 		{
-			int sum = 0;
-			for(int col = 0; col < nDocuments; col++)
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);	
+			logText = "\nPopulating Cluster document count";
+			//foutlog.write(logText.getBytes());			
+			for(int row = 0; row < k; row++)
 			{
-				if(currClusterKMeans.getElement(row, col) == 1.0)
-					sum++;
+				int sum = 0;
+				for(int col = 0; col < nDocuments; col++)
+				{
+					if(currClusterKMeans.getElement(row, col) == 1.0)
+						sum++;
+				}
+				clusterDocCounts[row][1] = sum;
+				logText = "\nNumber of documents in cluster: "+row+" = "+clusterDocCounts[row][1];
+				//foutlog.write(logText.getBytes());				
 			}
-			clusterDocCounts[row][1] = sum;
+			//foutlog.close();
+		}
+		catch(Exception e)
+		{
 		}
 	}
 	
 	// Calculate new centroid
 	public void recalculateCentroids(int k)
 	{
-		for(int row = 0; row < k; row++)
+		try
 		{
-			GVector temp = new GVector(numUniqueTerms);
-			temp.zero();
-			int docCount = 0;
-			
-			for(int col = 0; col < nDocuments; col++)
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);	
+			logText = "\nRecalculating centroids";
+			//foutlog.write(logText.getBytes());	
+			for(int row = 0; row < k; row++)
 			{
-				if(currClusterKMeans.getElement(row, col) == 1.0)
+				GVector temp = new GVector(numUniqueTerms);
+				temp.zero();
+				int docCount = 0;
+				logText = "\nConsidering current cluster index: "+row;
+				//foutlog.write(logText.getBytes());				
+				for(int col = 0; col < nDocuments; col++)
 				{
-					temp.add(docNormVectors.get(col));
-					docCount++;
+					if(currClusterKMeans.getElement(row, col) == 1.0)
+					{
+						logText = "\nDocument vector index "+col+" content: "+docNormVectors.get(col).toString();
+						//foutlog.write(logText.getBytes());						
+						temp.add(docNormVectors.get(col));
+						docCount++;
+					}
 				}
+				logText = "\nAddition result: "+temp.toString();
+				//foutlog.write(logText.getBytes());				
+				double additivetfidf = 0;
+				for(int i = 0; i < temp.getSize(); i++)
+				{
+					additivetfidf = temp.getElement(i) / (double) docCount;
+					temp.setElement(i, additivetfidf);
+				}
+				logText = "\nCentroid calculation: "+temp.toString();
+				//foutlog.write(logText.getBytes());				
 			}
-			double additivetfidf = 0;
-			for(int i = 0; i < temp.getSize(); i++)
-			{
-				additivetfidf = temp.getElement(i) / (double) docCount;
-				temp.setElement(i, additivetfidf);
-			}
+			//foutlog.close();
+		}
+		catch(Exception e)
+		{
 		}
 	}
 	
@@ -1947,15 +2816,29 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// Find closest cluster centroid index
 	public int findClosestClusterCentroidIndex(int k, int docVal)
 	{
-		double prev = 0.0; int index = 0;
-		for(int row = 0; row < k; row++)
+		int index = 0;
+		try
 		{
-			double temp = findCosineSimilarity(docVal, finalClustersKMeansCentroid[row]);
-			if(prev < temp)
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);	
+			logText = "\nFinding closest centroid for document index:"+docVal;
+			//foutlog.write(logText.getBytes());	
+			double prev = 0.0; 
+			for(int row = 0; row < k; row++)
 			{
-				prev = temp;
-				index = row;
+				double temp = findCosineSimilarity(docVal, finalClustersKMeansCentroid[row]);
+				logText = "\nLooking at cluster centroid index: "+row+" Value of similarity: "+temp;
+				//foutlog.write(logText.getBytes());				
+				if(prev < temp)
+				{
+					prev = temp;
+					index = row;
+				}
 			}
+			//foutlog.close();
+			
+		}
+		catch(Exception e)
+		{
 		}
 		return index;
 	}
@@ -1963,31 +2846,115 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	// Performing the actual k-means algorithm
 	public void doKMeans(int k)
 	{
-		initializeClusterCentroidKMeans(k);
-		assignInitialClusterCentroids(k);
-		initializeClusterCounts(k);
-		initializeClusterMatrices(k);
-		
-		int repeatCount = 0;
-		
-		do
+		try
 		{
-			currClusterKMeans.setZero();
-			for(int i = 0; i < nDocuments; i++)
-			{
-				int row = findClosestClusterCentroidIndex(k, i);
-				currClusterKMeans.setElement(row, i, 1.0);
-			}
-			reinitializeClusterCounts(k);
-			populateClusterDocumentCount(k);
-			if(!checkClusterChange(k))
-				break;
-			else
-				repeatCount++;
-			recalculateCentroids(k);
+			//FileOutputStream foutlog=new FileOutputStream(logFileName);	
+			logText = "\nStarting K-Means Process:";
+			//foutlog.write(logText.getBytes());	
+			//foutlog.close();
 			
-		}while(repeatCount < repeat_limit);
-		//printkMeansClusters();
+			initializeClusterCentroidKMeans(k);
+			assignInitialClusterCentroids(k);
+			initializeClusterCounts(k);
+			initializeClusterMatrices(k);
+			
+			int repeatCount = 0;
+
+
+			do
+			{
+				currClusterKMeans.setZero();
+				//foutlog=new FileOutputStream(logFileName);	
+				logText = "\nReset Clusters";
+				//foutlog.write(logText.getBytes());	
+				//foutlog.close();			
+				for(int i = 0; i < nDocuments; i++)
+				{
+					int row = findClosestClusterCentroidIndex(k, i);
+					currClusterKMeans.setElement(row, i, 1.0);
+				}
+				
+				reinitializeClusterCounts(k);
+				populateClusterDocumentCount(k);
+				if(!checkClusterChange(k))
+					break;
+				else
+					repeatCount++;
+				recalculateCentroids(k);
+				//foutlog=new FileOutputStream(foutlog);	
+
+				logText = "\nClusters this run:";
+				//foutlog.write(logText.getBytes());
+				for(int i = 0; i < k; i++)
+				{	
+					logText = "\nCluster "+i+" : ";
+					//foutlog.write(logText.getBytes());
+					for(int j = 0; j < nDocuments; j++)
+					{
+						logText = " "+currClusterKMeans.getElement(i,j);
+						//foutlog.write(logText.getBytes());	
+					}
+				}
+				//foutlog.close();			
+				
+			}while(repeatCount < repeat_limit);
+
+			int numOfClustersFinal = 0;		
+
+			for(int row = 0; row < currClusterKMeans.getNumRow(); row++)
+			{
+				for(int col = 0; col < currClusterKMeans.getNumCol(); col++)
+				{
+					if(currClusterKMeans.getElement(row, col) == 1.0)
+					{
+						numOfClustersFinal++;
+						break;
+					}
+				}
+			}
+
+			finalClustersKmeans = new GVector[numOfClustersFinal];
+			
+			int docsPerCluster = 0, clustersIndex = 0;
+			
+			for(int row = 0; row < currClusterKMeans.getNumRow(); row++)
+			{
+				docsPerCluster = 0;
+				for(int col = 0; col < currClusterKMeans.getNumCol(); col++)
+				{
+					if(currClusterKMeans.getElement(row, col) == 1.0)
+					{
+						docsPerCluster++;
+					}
+				}
+				if(docsPerCluster > 0)
+				{
+					finalClustersKmeans[clustersIndex++] = new GVector(docsPerCluster);
+				}
+			}		
+			
+			int vectorIndex = 0, hasDocs = 0;
+			clustersIndex = 0;
+			for(int row = 0; row < currClusterKMeans.getNumRow(); row++)
+			{
+				vectorIndex = 0;
+				hasDocs = 0;
+				for(int col = 0; col < currClusterKMeans.getNumCol(); col++)
+				{
+					if(currClusterKMeans.getElement(row, col) == 1.0)
+					{
+						finalClustersKmeans[clustersIndex].setElement(vectorIndex++,col);
+						hasDocs = 1;
+					}
+				}
+				if(hasDocs == 1)
+					clustersIndex++;
+			}			
+			//printkMeansClusters();
+		}
+		catch(Exception e)
+		{
+		}
 	}
 	
 	// Printing K-Means Clusters
@@ -1995,33 +2962,632 @@ class multiViewCluster extends JFrame implements ActionListener, ComponentListen
 	{
 		try
 		{
-		FileOutputStream foutlogCluster=new FileOutputStream(logFileName, true);
-		addClustersText("\n K-Means Clusters");
-		logText = "\n K-Means Clusters ";
-		foutlogCluster.write(logText.getBytes());	
+			FileOutputStream foutlogCluster=new FileOutputStream(logFileName, true);
+			addClustersText("\n\nK-Means Clusters");
+			logText = "\n\nK-Means Clusters ";
+			foutlogCluster.write(logText.getBytes());	
 
-		for(int row = 0; row < k; row++)
-		{
-			addClustersText("\n Cluster "+(row + 1)+":");
-			logText = "\n Cluster "+(row + 1)+":";
-			foutlogCluster.write(logText.getBytes());		
-			for(int col = 0; col < nDocuments; col++)
+			for(int row = 0; row < k; row++)
 			{
-				if(currClusterKMeans.getElement(row, col) == 1.0)
+				addClustersText("\nCluster "+(row + 1)+":");
+				logText = "\nCluster "+(row + 1)+":";
+				foutlogCluster.write(logText.getBytes());		
+				for(int col = 0; col < nDocuments; col++)
 				{
-					addClustersText(" "+col);
-					logText = " "+col;
-					foutlogCluster.write(logText.getBytes());
+					if(currClusterKMeans.getElement(row, col) == 1.0)
+					{
+						addClustersText(" "+col);
+						logText = " "+col;
+						foutlogCluster.write(logText.getBytes());
+					}
 				}
 			}
-		}
+			addClustersText("\nNumber of clusters formed: "+k);
+			logText = "\nNumber of clusters formed: "+k;
+			foutlogCluster.write(logText.getBytes());		
 		}
 		catch(Exception e)
 		{
 		}
 	}
-			
+
+	//Getting cluster value for a given document in the Initialization step Iv
+	public int getClusterNumberIv(GVector documentUnderTest)
+	{
+		double dotProductValue = 0.0, prev = 0.0;
+		int max = 0;
 		
+		for(int k = 0; k < seedDocumentIndices.length; k++)
+		{
+			dotProductValue = docNormVectors.get(seedDocumentIndices[k]).dot(documentUnderTest);
+			if(prev <= dotProductValue)
+			{
+				prev = dotProductValue;
+				max = k;
+			}
+		}
+		return max;
+	}
+	
+	// Calculate the Dr, Nr, and D values along with Cr and C Iv
+	public void calculateNrDrDIv()
+	{
+		nrIv = new int[seedDocumentIndices.length];
+		DrIv = new GVector[seedDocumentIndices.length];
+		CrIv = new GVector[seedDocumentIndices.length];
+		
+		calculateNrIv();
+		calculateDrIv();
+		calculateDIv();	
+	}
+
+	// Retrieve the cluster in which a particular document falls
+	public int getFinalClusterIv(int docIndex)
+	{
+		for(int row = 0; row < finalClustersIv.length; row++)
+		{
+			for(int col = 0; col < finalClustersIv[row].getSize(); col++)
+			{
+				if((int)finalClustersIv[row].getElement(col) == docIndex)
+				{
+					return row;
+				}
+			}
+		}
+		return -1;
+	}
+	// Retrieve the cluster in which a particular document falls for KMeans
+	public int getFinalClusterKMeans(int docIndex)
+	{
+		for(int row = 0; row < currClusterKMeans.getNumRow(); row++)
+		{
+				if(currClusterKMeans.getElement(row, docIndex) == 1.0)
+				{
+					return row;
+				}
+		}
+		return -1;
+	}	
+	
+	// MVS Similarity scores for all document pairs
+	public int similarityMatrixIv(String logFileName)
+	{
+		lock_var = 1;
+		txtClustersDocScores.setText("");
+		
+		similarityMatrixIv = new GMatrix(nDocuments, nDocuments);
+		similarityMatrixIv.setZero();
+		
+		GVector[] Dvalues = new GVector[finalClusters.length];
+		for(int j = 0; j < finalClustersIv.length; j++)
+		{
+			Dvalues[j] = new GVector(numUniqueTerms);
+			Dvalues[j].zero();
+		}
+		
+		try
+		{
+			FileOutputStream foutlog=new FileOutputStream(logFileName, true);
+			logText = "\nSimilarity Matrix Generation";
+			//foutlog.write(logText.getBytes());
+			logText = "\nD Vector Generation";
+			//foutlog.write(logText.getBytes());
+			for(int j = 0; j < finalClustersIv.length; j++)
+			{
+				logText = "\nD(S/S"+j+") Vector Generation";
+				//foutlog.write(logText.getBytes());
+				for(int k = 0; k < finalClustersIv.length; k++)
+				{
+					if(j != k)
+					{
+						for(int l = 0; l < finalClustersIv[k].getSize(); l++)
+						{
+							logText = "\n\tAdding doc index "+finalClustersIv[k].getElement(l)+" from cluster "+k;
+							//foutlog.write(logText.getBytes());
+							Dvalues[j].add(docNormVectors.get((int)finalClustersIv[k].getElement(l)));
+							logText = "\n\tAdded Vector: "+docNormVectors.get((int)finalClustersIv[k].getElement(l)).toString();
+							//foutlog.write(logText.getBytes());
+							logText = "\n\tResult Vector: "+Dvalues[j].toString();
+							//foutlog.write(logText.getBytes());
+						}
+					}
+				}
+			}
+			
+			for(int j = 0; j < nDocuments; j++)
+			{
+				for(int k = 0; k < nDocuments; k++)
+				{
+					int docjCluster = getFinalClusterIv(j);
+					int dockCluster = getFinalClusterIv(k);
+					
+					double dotProductFirst = docNormVectors.get(j).dot(docNormVectors.get(k));
+					int nValue = 0;
+					
+					if(docjCluster == dockCluster)
+						nValue = nDocuments - nrIv[docjCluster];
+					else
+						nValue = nDocuments - nrIv[docjCluster] - 1;
+						
+					GVector tempVector = new GVector(numUniqueTerms);
+					tempVector.zero();
+					
+					if(docjCluster == dockCluster)
+						tempVector.add(Dvalues[docjCluster]);
+					else
+					{
+						tempVector.add(Dvalues[docjCluster]);
+						tempVector.sub(docNormVectors.get(k));
+					}
+					
+					GVector tempC = new GVector(numUniqueTerms);
+					for(int b = 0; b < tempVector.getSize(); b++)
+					{
+						double tempValue = tempVector.getElement(b) / nValue;
+						tempC.setElement(b, tempValue);
+					}
+					
+					double dotProductSecond = docNormVectors.get(j).dot(tempC);
+					double dotProductThird = docNormVectors.get(k).dot(tempC);
+					
+					double similarityValue = dotProductFirst - dotProductSecond - dotProductThird + 1;
+					
+					similarityMatrixIv.setElement(j, k, similarityValue);
+				}
+			}
+			
+			logText = "\nSimilarity Matrix: \n";
+			foutlog.write(logText.getBytes());
+			for(int row = 0; row < similarityMatrixIv.getNumRow(); row++)
+			{
+				for(int col = 0; col < similarityMatrixIv.getNumCol(); col++)
+				{
+					logText = " "+similarityMatrixIv.getElement(row, col);
+					foutlog.write(logText.getBytes());
+				}
+				logText = "\n";
+				foutlog.write(logText.getBytes());
+			}
+			lock_var = 0;
+			
+			
+		}
+		catch(Exception e)
+		{
+			lock_var = 0;
+			txtMessage.append("Error Occured: \n");
+			txtMessage.append(e+"\n");		
+		}
+		return 1;
+	}	
+	
+	//Calculating the number of documents per cluster nr
+	public void calculateNrIv()
+	{
+		int nrIndex = 0;
+		for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+		{
+			int clusterCount = 0;
+			for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+			{
+				if(initialClusterMatrixCopy.getElement(row, col) == 1.0)
+				{
+					clusterCount++;
+				}
+			}
+			nrIv[nrIndex++] = clusterCount;
+		}
+	}
+	
+	//Calculating the number of documents per cluster nr
+	public void calculateNrKMeans()
+	{
+		nrKMeans = new int[currClusterKMeans.getNumRow()];
+		
+		int nrIndex = 0;
+		for(int row = 0; row < currClusterKMeans.getNumRow(); row++)
+		{
+			int clusterCount = 0;
+			for(int col = 0; col < currClusterKMeans.getNumCol(); col++)
+			{
+				if(initialClusterMatrixCopy.getElement(row, col) == 1.0)
+				{
+					clusterCount++;
+				}
+			}
+			nrKMeans[nrIndex++] = clusterCount;
+		}
+	}	
+	
+	// Calculating composite vector of documents in a cluster Dr
+	public void calculateDrIv()
+	{
+		//txtMessage.append("\nIn Calculate Dr");
+		for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+		{
+			DrIv[row] = new GVector(numUniqueTerms);
+			DrIv[row].zero();
+			for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+			{
+				if(initialClusterMatrixCopy.getElement(row, col) == 1.0)
+				{
+					DrIv[row].add(docNormVectors.get(col));
+				}
+			}
+			CrIv[row] = new GVector(numUniqueTerms);
+			CrIv[row].zero();
+			if(nrIv[row] != 0)
+			{
+				CrIv[row].add(DrIv[row]);
+				for(int b = 0; b < DrIv[row].getSize(); b++)
+				{
+					double tempValue = DrIv[row].getElement(b) / nrIv[row];
+					CrIv[row].setElement(b, tempValue);
+				}
+			}
+			else
+			{
+				CrIv[row].zero();
+			}
+			//txtMessage.append("\nAfter Dr-> row = "+row+" Dr: "+Dr[row].toString());
+			//txtMessage.append("\nAfter Cr-> row = "+row+" Cr: "+Cr[row].toString());
+		}
+	}
+	
+	// Calculating composite vector of documents in a cluster Dr
+	public void calculateDIv()
+	{
+		//txtMessage.append("\nIn Calculate D");
+		DIv = new GVector(numUniqueTerms);
+		DIv.zero();
+		for(int k = 0; k < nDocuments; k++)
+		{
+			DIv.add(docNormVectors.get(k));
+		}
+		CIv = new GVector(numUniqueTerms);
+		CIv.zero();
+		CIv.add(D);
+		for(int b = 0; b < DIv.getSize(); b++)
+		{
+			double tempValue = DIv.getElement(b) / nDocuments;
+			CIv.setElement(b, tempValue);
+		}
+		//txtMessage.append("\nD: "+D.toString());
+		//txtMessage.append("\nC: "+C.toString());		
+	}
+	
+	// Creating v list with document indices
+	public void createVIv()
+	{
+		for(int j = 0; j < nDocuments; j++)
+		{
+			vIv.add(j);
+		}
+	}
+	
+	// Generating random permutation of v for Refinement step
+	public void generatePermutationvIv()
+	{
+		java.util.Collections.shuffle(vIv);
+	}
+
+	public double calculateIusingIv(int nFactor, GVector vectorFactor)
+	{
+		double normVectorFactor = vectorFactor.norm();
+		double factorOne = (nDocuments + normVectorFactor) / (nDocuments - nFactor);
+		double factorTwo = factorOne - 1.0;
+		double dotProduct = vectorFactor.dot(D);
+		
+		double valueIusingIv = (factorOne * normVectorFactor) - (factorTwo * (dotProduct / normVectorFactor));
+		
+		return valueIusingIv;
+	}		
+
+	//Getting value q in the Refinement step based on IV
+	public int getQNumberUsingIv(int pValue, int iValue, GVector vectorFactor)
+	{
+		double currValue = 0.0, prev = 0.0;
+		int max = 0;
+		GVector tempVector = new GVector(numUniqueTerms);
+		
+		for(int k = 0; k < seedDocumentIndices.length; k++)
+		{
+			if(k != pValue)
+			{
+				tempVector.zero();
+				tempVector.add(DrIv[k], docNormVectors.get(iValue));			
+				currValue = calculateIusingIv((nrIv[k] + 1), tempVector) - calculateIusingIv(nrIv[k], DrIv[k]);
+				if(prev <= currValue)
+				{
+					prev = currValue;
+					max = k;
+				}
+			}
+		}
+		return max;
+	}	
+	
+	// Reassign cluster for a particular document in the Refinement step
+	public int reassignClusterIv(int iValue, int pValue, int qValue)
+	{
+		if(initialClusterMatrixCopy.getElement(pValue, iValue) == 0.0)
+			return -1;
+		initialClusterMatrixCopy.setElement(pValue, iValue, 0.0);
+		initialClusterMatrixCopy.setElement(qValue, iValue, 1.0);
+		
+		return 0;
+	}
+	
+	// Recalculate Dr for a given cluster in the Refinement step
+	public void reCalculateDrIv(int rValue)
+	{
+		DrIv[rValue].zero();
+		for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+		{
+			if(initialClusterMatrixCopy.getElement(rValue, col) == 1.0)
+			{
+				DrIv[rValue].add(docNormVectors.get(col));
+			}
+		}
+
+		CrIv[rValue].zero();
+		if(nrIv[rValue] != 0)
+		{
+			CrIv[rValue].add(DrIv[rValue]);
+			for(int b = 0; b < DrIv[rValue].getSize(); b++)
+			{
+				double tempValue = DrIv[rValue].getElement(b) / nrIv[rValue];
+				CrIv[rValue].setElement(b, tempValue);
+			}
+		}
+		else
+		{
+			CrIv[rValue].zero();
+		}	
+	}
+
+	// Recalculate nr for a given cluster in the Refinement step	
+	public void reCalculateNrIv(int rValue)
+	{
+		int clusterCount = 0;
+		for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+		{
+			if(initialClusterMatrixCopy.getElement(rValue, col) == 1.0)
+			{
+				clusterCount++;
+			}
+		}	
+		nrIv[rValue] = clusterCount;
+	}
+	
+	// Refinement step based on choice of clustering criterion to be used
+	// 1 - MVSC-IR
+	// 2 - MVSC-IV
+	public int performRefinementStepIv(String logFileName)
+	{
+		lock_var = 1;
+		int hasDocumentMoved = 1, iVal = 0, pVal = 0, qVal = 0, totalNumRuns = 0;;
+		double deltaIp = 0.0, deltaIq = 0.0;
+		GVector tempV = new GVector(numUniqueTerms);
+		createVIv();
+
+		
+		try
+		{
+			FileOutputStream foutlog=new FileOutputStream(logFileName, true);
+		
+			while(hasDocumentMoved != 0 && totalNumRuns < 20000)
+			{
+				hasDocumentMoved = 0;
+				totalNumRuns++;
+				generatePermutationvIv();
+				
+				for(int j = 0; j < v.size(); j++)
+				{
+					iVal = vIv.get(j);
+					
+					for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+					{
+						if(initialClusterMatrixCopy.getElement(row, iVal) == 1.0)
+						{
+							pVal = row;
+							break;
+						}
+					}
+					
+					logText = "\nj = "+j+" iVal = "+iVal+" pVal = "+pVal;
+					//foutlog.write(logText.getBytes());
+					
+					if(algoChoice == 1)
+					{
+						tempV.zero();
+						tempV.sub(DrIv[pVal], docNormVectors.get(iVal));
+
+						deltaIp = calculateIusingIr(nrIv[pVal] - 1, tempV) - calculateIusingIr(nrIv[pVal], DrIv[pVal]);
+						if(Double.isNaN(deltaIp))
+						{
+							deltaIp = 0.0;
+						}
+						logText = "\n\tdeltaIp Calculation: \n\tnp-1 = "+(nrIv[pVal]-1)+"\n\tDp-di: "+tempV.toString()+"\n\tnp = "+nrIv[pVal]+"\n\tDp: "+DrIv[pVal];
+						//foutlog.write(logText.getBytes());
+						
+						qVal = getQNumberUsingIr(pVal, iVal, docNormVectors.get(iVal));
+						
+						tempV.zero();
+						tempV.add(DrIv[qVal], docNormVectors.get(iVal));	
+						
+						deltaIq = calculateIusingIr(nrIv[qVal] + 1, tempV) - calculateIusingIr(nrIv[qVal], DrIv[qVal]);
+						if(Double.isNaN(deltaIq))
+						{
+							deltaIq = 0.0;
+						}
+						
+						logText = "\n\tdeltaIq Calculation: \n\tnq+1 = "+(nrIv[qVal]+1)+"\n\tDq+di: "+tempV.toString()+"\n\tnq = "+nrIv[qVal]+"\n\tDq: "+DrIv[qVal];
+						//foutlog.write(logText.getBytes());
+					}
+					else if(algoChoice == 2)
+					{
+						tempV.zero();
+						tempV.sub(DrIv[pVal], docNormVectors.get(iVal));
+						
+						deltaIp = calculateIusingIv(nrIv[pVal] - 1, tempV) - calculateIusingIv(nrIv[pVal], DrIv[pVal]);
+						if(Double.isNaN(deltaIp))
+						{
+							deltaIp = 0.0;
+						}
+						
+						logText = "\n\tdeltaIp Calculation: \n\tnp-1 = "+(nrIv[pVal]-1)+"\n\tDp-di: "+tempV.toString()+"\n\tnp = "+nrIv[pVal]+"\n\tDp: "+DrIv[pVal];
+						//foutlog.write(logText.getBytes());	
+						
+						qVal = getQNumberUsingIv(pVal, iVal, docNormVectors.get(iVal));
+						
+						tempV.zero();
+						tempV.add(DrIv[qVal], docNormVectors.get(iVal));
+						
+						deltaIq = calculateIusingIv(nrIv[qVal] + 1, tempV) - calculateIusingIv(nrIv[qVal], DrIv[qVal]);
+						if(Double.isNaN(deltaIq))
+						{
+							deltaIq = 0.0;
+						}
+						
+						logText = "\n\tdeltaIq Calculation: \n\tnq+1 = "+(nrIv[qVal]+1)+"\n\tDq+di: "+tempV.toString()+"\n\tnq = "+nrIv[qVal]+"\n\tDq: "+DrIv[qVal];
+						//foutlog.write(logText.getBytes());						
+					}
+					
+					logText = "\nqVal = "+qVal+" deltaIp = "+deltaIp+" deltaIq = "+deltaIq+" delIp + delIq = "+(deltaIp + deltaIq);
+					//foutlog.write(logText.getBytes());	
+					
+					if((deltaIp + deltaIq) > 0.0)
+					{
+						reassignClusterIv(iVal, pVal, qVal);
+						reCalculateNrIv(pVal);
+						reCalculateNrIv(qVal);
+						reCalculateDrIv(pVal);
+						reCalculateDrIv(qVal);
+						hasDocumentMoved = 1;
+						
+					}
+				}
+			}
+			logText = "\n ----------------------------------------------------------------";
+			foutlog.write(logText.getBytes());		
+			logText = "\nFinal Clusters Matrix: "; 
+			foutlog.write(logText.getBytes());
+
+			for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+			{
+				logText = "\nCluster: "+(row)+" -> "; 
+				foutlog.write(logText.getBytes());
+				for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+				{
+					logText = " "+initialClusterMatrixCopy.getElement(row, col); 
+					foutlog.write(logText.getBytes());
+				}
+			}
+			logText = "\n ----------------------------------------------------------------";
+			foutlog.write(logText.getBytes());		
+			logText = "\nFinal Clusters using algorithm "+algoChoice; 
+			foutlog.write(logText.getBytes());
+			
+			int numOfClustersFinal = 0;		
+
+			for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+			{
+				for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+				{
+					if(initialClusterMatrixCopy.getElement(row, col) == 1.0)
+					{
+						numOfClustersFinal++;
+						break;
+					}
+				}
+			}
+
+			foutlog.write(logText.getBytes());
+			
+			finalClustersIv = new GVector[numOfClustersFinal];
+			
+			int docsPerCluster = 0, clustersIndex = 0;
+			
+			for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+			{
+				docsPerCluster = 0;
+				for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+				{
+					if(initialClusterMatrixCopy.getElement(row, col) == 1.0)
+					{
+						docsPerCluster++;
+					}
+				}
+				if(docsPerCluster > 0)
+				{
+					finalClustersIv[clustersIndex++] = new GVector(docsPerCluster);
+				}
+			}
+		
+			int vectorIndex = 0, hasDocs = 0;
+			clustersIndex = 0;
+			for(int row = 0; row < initialClusterMatrixCopy.getNumRow(); row++)
+			{
+				vectorIndex = 0;
+				hasDocs = 0;
+				for(int col = 0; col < initialClusterMatrixCopy.getNumCol(); col++)
+				{
+					if(initialClusterMatrixCopy.getElement(row, col) == 1.0)
+					{
+						finalClustersIv[clustersIndex].setElement(vectorIndex++,col);
+						hasDocs = 1;
+					}
+				}
+				if(hasDocs == 1)
+					clustersIndex++;
+			}
+			
+			/*for(int t=0;t<finalClusters.length;t++)
+			{
+				Clusters.addItemset(new Itemset(""+t));
+			}*/
+			
+			for(int k = 0; k < finalClustersIv.length; k++)
+			{
+				logText = "\nFinal Cluster: "+(k+1)+" -> "; 
+				foutlog.write(logText.getBytes());
+				for(int m = 0; m < finalClustersIv[k].getSize(); m++)
+				{
+					int tempNum = (int)finalClustersIv[k].getElement(m);
+					logText = " "+tempNum;
+					foutlog.write(logText.getBytes());
+					//Clusters.getItemset(k).addItem(""+tempNum);
+				}
+			}
+			
+			logText = "\n ----------------------------------------------------------------";
+			foutlog.write(logText.getBytes());				
+			/*logText = "\n Initial Cluster Copy Matrix: ";
+			foutlog.write(logText.getBytes());		
+			for(int t = 0; t < initialClusterMatrixCopy.getNumRow(); t++)
+			{
+				logText = "\n Cluster: "+(t)+" Values: ";
+				foutlog.write(logText.getBytes());
+				for(int k = 0; k < initialClusterMatrixCopy.getNumCol(); k++)
+				{
+					logText = " "+initialClusterMatrixCopy.getElement(t, k);
+					foutlog.write(logText.getBytes());
+				}
+			}	*/
+			lock_var = 0;
+			
+
+		}
+		catch(Exception e)
+		{
+			lock_var = 0;
+			txtMessage.append("Error Occured in refinement: \n");
+			txtMessage.append(e+"\n");		
+		}		
+		return 1;		
+	}
+	
 	static public void main(String[] args)
 	{
 		try 
